@@ -10,8 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vbs/shared": "workspace:*",
-    "@fastify/cors": "^8.4.0",
     "fastify": "^4.26.2"
   },
   "devDependencies": {

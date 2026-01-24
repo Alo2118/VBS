@@ -9,27 +9,6 @@ export type Role =
   | "BAR_STAFF"
   | "COACH";
 
-export const roles: Role[] = [
-  "ADMIN",
-  "MANAGER",
-  "FRONT_DESK",
-  "BAR_STAFF",
-  "COACH"
-];
-
-export interface BookingPolicy {
-  cancellationHours: number;
-  maxAdvanceDays: number;
-  slotDurationMinutes: number;
-}
-
-export interface NotificationPolicy {
-  emailEnabled: boolean;
-  smsEnabled: boolean;
-}
-
-export type WalletMovementType = "TOP_UP" | "PURCHASE" | "REFUND" | "ADJUSTMENT";
-
 export interface MemberProfile {
   id: string;
   fullName: string;
