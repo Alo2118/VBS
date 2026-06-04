@@ -123,11 +123,14 @@ export interface BookingPolicy {
   timezone: string;
 }
 
+export type SlotStatus = "FREE" | "TAKEN" | "UNAVAILABLE";
+
 /** Slot calcolato per la griglia di disponibilità (giorno × campo × orario). */
 export interface AvailabilitySlot {
   courtId: string;
+  courtName: string;
   startAt: string;
   endAt: string;
   price: number;
-  status: "FREE" | "TAKEN" | "UNAVAILABLE";
+  status: SlotStatus;
 }

@@ -1,7 +1,11 @@
-export const navigationItems = [
-  { label: "Dashboard", path: "/" },
-  { label: "Prenotazioni", path: "/bookings" },
-  { label: "Membri", path: "/members" },
-  { label: "Bar", path: "/bar" },
-  { label: "Wallet", path: "/wallet" }
+export type NavItem = {
+  label: string;
+  path: string;
+  staffOnly?: boolean;
+};
+
+export const navigationItems: NavItem[] = [
+  { label: "Prenota", path: "/bookings" },
+  { label: "Le mie prenotazioni", path: "/my-bookings" },
+  { label: "Soci", path: "/members", staffOnly: true }
 ];
