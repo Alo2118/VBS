@@ -1,0 +1,103 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { Page } from "@/shared/ui/page";
+import { Spinner } from "@/shared/ui/spinner";
+import { StatusPill } from "@/shared/ui/status-pill";
+import { useToast } from "@/shared/ui/toast";
+import { fetchDayBookings, markNoShow } from "@/shared/api/staff";
+import type { DayBooking } from "@/shared/api/staff";
+import { addDays, formatDay, formatTime, isSameDay, toIsoDate } from "@/shared/utils/date";
+
+const statusMeta: Record<string, { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
+  CONFIRMED: { label: "Confermata", tone: "success" },
+  CANCELLED: { label: "Disdetta", tone: "info" },
+  NO_SHOW: { label: "No-show", tone: "danger" },
+  COMPLETED: { label: "Completata", tone: "info" }
+};
+
+export const AttendancePage = () => {
+  const notify = useToast();
+  const today = useMemo(() => new Date(), []);
+  const [day, setDay] = useState<Date>(today);
+  const [bookings, setBookings] = useState<DayBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async (target: Date) => {
+    setLoading(true);
+    try {
+      setBookings(await fetchDayBookings(toIsoDate(target)));
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    void load(day);
+  }, [day, load]);
+
+  const onNoShow = async (b: DayBooking) => {
+    setBusyId(b.id);
+    try {
+      await markNoShow(b.id);
+      notify("Segnata come mancata presentazione. Addebito generato.", "info");
+      await load(day);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const isToday = isSameDay(day, today);
+
+  return (
+    <Page title="Presenze" description="Segna le mancate presentazioni (genera l'addebito).">
+      <Card className="flex items-center justify-between gap-4">
+        <Button variant="secondary" size="lg" onClick={() => setDay((d) => addDays(d, -1))} aria-label="Giorno precedente">
+          ‹
+        </Button>
+        <p className="text-xl font-semibold capitalize">{formatDay(day)}</p>
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={() => setDay((d) => addDays(d, 1))}
+          disabled={isToday}
+          aria-label="Giorno successivo"
+        >
+          ›
+        </Button>
+      </Card>
+
+      {loading ? (
+        <Spinner />
+      ) : bookings.length === 0 ? (
+        <Card>
+          <p className="text-center text-base text-muted">Nessuna prenotazione in questa giornata.</p>
+        </Card>
+      ) : (
+        bookings.map((b) => (
+          <Card key={b.id} className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-lg font-semibold">{b.memberName}</p>
+              <p className="text-base text-muted">
+                {b.courtName} · {formatTime(b.startAt)}–{formatTime(b.endAt)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusPill {...(statusMeta[b.status] ?? { label: b.status, tone: "info" })} />
+              {b.status === "CONFIRMED" && (
+                <Button variant="danger" size="lg" onClick={() => onNoShow(b)} disabled={busyId === b.id}>
+                  No-show
+                </Button>
+              )}
+            </div>
+          </Card>
+        ))
+      )}
+    </Page>
+  );
+};

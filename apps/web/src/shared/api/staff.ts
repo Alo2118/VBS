@@ -1,0 +1,152 @@
+import type { Charge, MemberProfile, PriceRule } from "@vbs/shared";
+import { supabase, toBusinessError } from "./supabase";
+
+const unwrap = <T>(data: T | null, error: Parameters<typeof toBusinessError>[0]): T => {
+  const err = toBusinessError(error);
+  if (err) throw err;
+  return data as T;
+};
+
+// --- Soci -------------------------------------------------------------------
+export const fetchMembers = async (): Promise<MemberProfile[]> => {
+  const { data, error } = await supabase
+    .from("members")
+    .select(
+      "id, full_name, email, phone, role, membership_status, membership_start_date, membership_end_date, aics_number"
+    )
+    .order("membership_status")
+    .order("full_name");
+  const rows = unwrap(data, error) ?? [];
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    fullName: r.full_name as string,
+    email: (r.email as string) ?? undefined,
+    phone: (r.phone as string) ?? undefined,
+    role: r.role as MemberProfile["role"],
+    membershipStatus: r.membership_status as MemberProfile["membershipStatus"],
+    membershipStartDate: (r.membership_start_date as string) ?? undefined,
+    membershipEndDate: (r.membership_end_date as string) ?? undefined,
+    aicsNumber: (r.aics_number as string) ?? undefined
+  }));
+};
+
+export const validateMember = async (params: {
+  memberId: string;
+  aicsNumber: string;
+  startDate: string;
+  endDate: string;
+}): Promise<void> => {
+  const { error } = await supabase.rpc("validate_member", {
+    p_member_id: params.memberId,
+    p_aics: params.aicsNumber,
+    p_start: params.startDate,
+    p_end: params.endDate
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
+// --- Tariffe (edizione multipla, RF-CFG-7) ----------------------------------
+export const fetchPriceRules = async (): Promise<PriceRule[]> => {
+  const { data, error } = await supabase
+    .from("price_rules")
+    .select("id, court_id, weekday, start_time, end_time, price")
+    .order("start_time");
+  const rows = unwrap(data, error) ?? [];
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    courtId: (r.court_id as string) ?? undefined,
+    weekday: (r.weekday as number) ?? undefined,
+    startTime: r.start_time as string,
+    endTime: r.end_time as string,
+    price: Number(r.price)
+  }));
+};
+
+/** Aggiorna in blocco il prezzo di più fasce in un'unica operazione. */
+export const bulkUpdatePrice = async (ids: string[], price: number): Promise<number> => {
+  const { data, error } = await supabase.rpc("bulk_update_price", {
+    p_ids: ids,
+    p_price: price
+  });
+  return unwrap(data, error) as number;
+};
+
+// --- Addebiti ----------------------------------------------------------------
+export type ChargeRow = Charge & { memberName: string };
+
+export const fetchCharges = async (): Promise<ChargeRow[]> => {
+  const { data, error } = await supabase
+    .from("charges")
+    .select(
+      "id, booking_id, member_id, type, amount, status, reason, created_at, settled_at, settled_by, members:member_id(full_name)"
+    )
+    .order("created_at", { ascending: false });
+  const rows = unwrap(data, error) ?? [];
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    bookingId: r.booking_id as string,
+    memberId: r.member_id as string,
+    type: r.type as Charge["type"],
+    amount: Number(r.amount),
+    status: r.status as Charge["status"],
+    reason: (r.reason as string) ?? undefined,
+    createdAt: r.created_at as string,
+    settledAt: (r.settled_at as string) ?? undefined,
+    settledBy: (r.settled_by as string) ?? undefined,
+    memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—"
+  }));
+};
+
+export const settleCharge = async (chargeId: string): Promise<void> => {
+  const { error } = await supabase.rpc("settle_charge", { p_charge_id: chargeId });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
+export const waiveCharge = async (chargeId: string, reason: string): Promise<void> => {
+  const { error } = await supabase.rpc("waive_charge", {
+    p_charge_id: chargeId,
+    p_reason: reason
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
+// --- No-show ----------------------------------------------------------------
+export type DayBooking = {
+  id: string;
+  courtName: string;
+  memberName: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+};
+
+export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> => {
+  const from = `${isoDate}T00:00:00`;
+  const to = `${isoDate}T23:59:59`;
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, start_at, end_at, status, members:member_id(full_name), courts:court_id(name)"
+    )
+    .gte("start_at", from)
+    .lte("start_at", to)
+    .order("start_at");
+  const rows = unwrap(data, error) ?? [];
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    startAt: r.start_at as string,
+    endAt: r.end_at as string,
+    status: r.status as string,
+    memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—",
+    courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
+  }));
+};
+
+export const markNoShow = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase.rpc("mark_no_show", { p_booking_id: bookingId });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
