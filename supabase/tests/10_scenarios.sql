@@ -126,7 +126,7 @@ begin
   raise notice 'TEST 6 OK: disdetta gratuita, nessun addebito';
 end $$;
 
--- 7) Disdetta tardiva -> addebito = prezzo del campo
+-- 7) Disdetta tardiva (giorno diverso) -> addebito = prezzo del campo
 do $$
 declare
   v_court uuid;
@@ -138,8 +138,11 @@ begin
   select id into v_court from courts order by name limit 1;
   v_start := ((current_date + 6)::timestamp + time '10:00') at time zone 'Europe/Rome';
   select * into v_b from create_booking(v_court, v_start);
-  -- forzo lo scadere del termine di disdetta (simula "oltre il giorno prima")
-  update bookings set free_cancellation_deadline = now() - interval '1 hour' where id = v_b.id;
+  -- simulo: prenotata ieri e termine già scaduto (disdetta in un altro giorno)
+  update bookings
+     set free_cancellation_deadline = now() - interval '1 hour',
+         created_at = now() - interval '1 day'
+   where id = v_b.id;
   perform cancel_booking(v_b.id);
   select amount into v_amount from charges
    where booking_id = v_b.id and type = 'LATE_CANCELLATION';
@@ -341,6 +344,24 @@ begin
     raise exception 'TEST 16 FALLITO: penale attesa %, ottenuta %', v_b2.price, v_amount;
   end if;
   raise notice 'TEST 16 OK: libera campo senza/con penale, slot riprenotabile';
+end $$;
+
+-- 17) Disdetta in giornata (stesso giorno della prenotazione) -> gratuita
+do $$
+declare v_court uuid; v_start timestamptz; v_b bookings%rowtype; v_n int;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name desc limit 1; -- 'Verde'
+  v_start := ((current_date + 9)::timestamp + time '13:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  -- termine già scaduto (prenotazione "in giornata") ma created_at = oggi
+  update bookings set free_cancellation_deadline = now() - interval '1 hour' where id = v_b.id;
+  perform cancel_booking(v_b.id);
+  select count(*) into v_n from charges where booking_id = v_b.id;
+  if v_n <> 0 then
+    raise exception 'TEST 17 FALLITO: addebito su disdetta in giornata (%)', v_n;
+  end if;
+  raise notice 'TEST 17 OK: disdetta in giornata gratuita, nessun addebito';
 end $$;
 
 select 'TUTTI I TEST SUPERATI' as risultato;
