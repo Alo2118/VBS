@@ -108,15 +108,24 @@ Coerente con i ruoli già definiti in `packages/shared` (`ADMIN/MANAGER/FRONT_DE
 - RF-CFG-4: L'admin può creare **chiusure/eccezioni** (manutenzione, festività, maltempo) che rendono
   indisponibili slot specifici.
 - RF-CFG-5: L'admin configura le **policy di prenotazione**: anticipo massimo (default 14 giorni), finestra
-  di disdetta, importo penale disdetta tardiva/no-show, eventuali prezzi per fascia.
-- RF-CFG-6: Le configurazioni sono versionate/audit: ogni modifica registra chi/quando/prima-dopo.
+  di disdetta. **La penale di disdetta tardiva/no-show è pari al prezzo del campo prenotato** (vedi §6),
+  quindi non è un importo a sé: deriva dal prezzo dello slot.
+- RF-CFG-6: **Prezzi per fascia oraria**: l'admin definisce il prezzo del campo per fasce orarie (es.
+  mattina/pomeriggio/sera, prime-time vs non), eventualmente diverso per giorno/campo. Il prezzo dello slot
+  determina sia l'eventuale costo della prenotazione sia l'importo della penale.
+- RF-CFG-7: **Edizione multipla degli slot**: l'admin può modificare **più slot in blocco** (selezione
+  multipla / per intervallo / per fascia) — es. impostare prezzo, durata, apertura o chiusura su molti slot
+  in un'unica operazione, senza editarli uno per uno.
+- RF-CFG-8: Le configurazioni sono versionate/audit: ogni modifica registra chi/quando/prima-dopo (anche le
+  edizioni multiple, come singola operazione tracciata).
 
 ### 4.2 Disponibilità e prenotazione (Socio/Staff) — RF-BOOK
 - RF-BOOK-1: Il socio vede una **griglia di disponibilità** (giorno × campo × orario) con stato chiaro:
   Libero / Occupato / Non disponibile.
 - RF-BOOK-2: Il socio seleziona uno slot libero e conferma la prenotazione in un flusso a pochi passi.
-- RF-BOOK-3: **Solo i soci con tessera `VALID`** possono confermare. Tessera `EXPIRED/SUSPENDED` →
-  prenotazione bloccata con messaggio chiaro e indicazione su come rinnovare.
+- RF-BOOK-3: **Solo i soci con tessera `VALID`** possono confermare. Stato `PENDING` (non ancora validato
+  dallo staff), `EXPIRED` o `SUSPENDED` → prenotazione bloccata con messaggio chiaro e indicazione su come
+  procedere (attendere validazione / rinnovare la tessera).
 - RF-BOOK-4: La creazione è **atomica**: nessun overbooking anche con richieste concorrenti.
 - RF-BOOK-5: Limiti anti-abuso configurabili (es. max N prenotazioni attive per socio) — *configurabile,
   default generoso in MVP.*
@@ -128,8 +137,9 @@ Coerente con i ruoli già definiti in `packages/shared` (`ADMIN/MANAGER/FRONT_DE
 - RF-CANCEL-2: **Regola di disdetta** (requisito committente): la disdetta è gratuita se effettuata
   **entro il giorno prima** della prenotazione. Default operativo: **entro le 23:59 del giorno precedente**
   alla data dello slot. La soglia esatta è **configurabile** dall'admin (vedi §6 per il modello preciso).
-- RF-CANCEL-3: Disdetta **tardiva** (oltre la soglia) o **no-show** → **è dovuto il pagamento** della quota
-  configurata: si genera un **addebito (charge)** a carico del socio.
+- RF-CANCEL-3: Disdetta **tardiva** (oltre la soglia) o **no-show** → **è dovuto il pagamento**: si genera
+  un **addebito (charge)** a carico del socio **pari al prezzo del campo prenotato** (lo stesso prezzo di
+  quello slot/fascia).
 - RF-CANCEL-4: Prima di confermare una disdetta tardiva, la UI **mostra esplicitamente l'importo dovuto**
   e chiede conferma (tolleranza all'errore per over 50).
 - RF-CANCEL-5: Lo staff (Manager) può **esonerare** un addebito con motivazione obbligatoria (audit log).
@@ -139,10 +149,19 @@ Coerente con i ruoli già definiti in `packages/shared` (`ADMIN/MANAGER/FRONT_DE
 - RF-HIST-1: Il socio vede lo storico prenotazioni con stato (Confermata/Disdetta/No-show/Completata).
 - RF-HIST-2: Il socio vede gli **addebiti** dovuti e il loro stato (Dovuto/Pagato/Esonerato).
 
-### 4.5 Gestione soci (Staff/Admin) — RF-MEMBER
-- RF-MEMBER-1: Anagrafica socio con campi tessera obbligatori (`aics_number`, date, stato) — cfr. shared types.
-- RF-MEMBER-2: Job giornaliero che porta a `EXPIRED` le tessere scadute.
-- RF-MEMBER-3: Reminder scadenza tessera (post-MVP se necessario).
+### 4.5 Gestione soci e registrazione (Staff/Admin) — RF-MEMBER
+- RF-MEMBER-1: **Registrazione con validazione dello staff (deciso)**: il socio si **auto-registra**
+  (dati anagrafici + credenziali) ma l'account nasce in stato **`PENDING`** e **non può prenotare** finché
+  lo staff non lo **valida** inserendo/confermando i dati tessera (`aics_number`, date) e portandolo a
+  `VALID`. Lo staff può anche rifiutare/sospendere.
+- RF-MEMBER-2: Anagrafica socio con campi tessera obbligatori (`aics_number`, `membershipStartDate`,
+  `membershipEndDate`, `membershipStatus`) — cfr. shared types.
+- RF-MEMBER-3: **Tessera scaduta = stop prenotazioni (deciso)**: con `membershipStatus` diverso da `VALID`
+  (`EXPIRED`/`SUSPENDED`/`PENDING`) il socio **non può prenotare**; le prenotazioni future restano valide ma
+  non se ne possono creare di nuove finché la tessera non torna `VALID`. Controllo imposto dal DB (RLS), non
+  dal solo frontend.
+- RF-MEMBER-4: Job giornaliero che porta a `EXPIRED` le tessere con `membershipEndDate` superata.
+- RF-MEMBER-5: Reminder scadenza tessera (post-MVP se necessario).
 
 ---
 
@@ -174,12 +193,16 @@ La frase "disdetta entro il giorno prima" è ambigua e va resa **deterministica*
   `BOOKING_CANCELLATION_HOURS` nel monorepo.
 - L'admin sceglie quale modello applicare (`CALENDAR_DAY_BEFORE` | `ROLLING_HOURS`).
 
+**Importo della penale (deciso):** la penale è **uguale al prezzo del campo** per quello slot/fascia oraria.
+Non esiste un importo penale separato: si usa il `price` della prenotazione (determinato dalla fascia oraria,
+vedi RF-CFG-6). Lo `price` viene "congelato" sulla prenotazione al momento della creazione, così la penale
+resta corretta anche se l'admin cambia i listini in seguito.
+
 Logica di disdetta:
 1. `now <= free_cancellation_deadline` → disdetta **gratuita**, slot liberato, stato `CANCELLED`.
 2. `now > free_cancellation_deadline` → disdetta **tardiva**: slot liberato, stato `CANCELLED`, viene
-   generato un **charge** di importo `lateCancellationFee`.
-3. Mancata presentazione senza disdetta → lo staff segna `NO_SHOW` → charge di importo `noShowFee`
-   (può coincidere con `lateCancellationFee`).
+   generato un **charge** di importo = `booking.price` (prezzo del campo per quella fascia).
+3. Mancata presentazione senza disdetta → lo staff segna `NO_SHOW` → charge di importo = `booking.price`.
 4. Eccezioni d'impianto (es. maltempo, chiusura) → nessun addebito; eventuale rimborso automatico/esonero.
 
 **Pagamento dell'addebito (MVP)**: l'addebito è registrato e tracciato (stato `DUE`). L'incasso avviene
@@ -193,32 +216,42 @@ ogni movimento tracciato, storni con motivazione).
 
 > Schema logico; l'implementazione DB seguirà le convenzioni del backend (migrazioni versionate).
 
-- **Member** — `id, fullName, email?, phone?, role, aicsNumber, membershipStartDate, membershipEndDate, membershipStatus`
+- **Member** — `id, fullName, email?, phone?, role, aicsNumber?, membershipStartDate?, membershipEndDate?,
+  membershipStatus (PENDING/VALID/EXPIRED/SUSPENDED), validatedBy?, validatedAt?`
+  - Auto-registrazione → nasce `PENDING`; lo staff valida → `VALID` (vedi RF-MEMBER-1).
 - **Court** — `id, name (Campo Beach 1..3), active`
 - **OpeningRule** — `id, courtId?, weekday, openTime, closeTime, slotDurationMinutes, active`
   (definisce gli slot generabili; `courtId` null = vale per tutti i campi)
+- **PriceRule** (prezzo per fascia oraria) — `id, courtId?, weekday?, startTime, endTime, price`
+  (tariffa applicata agli slot che ricadono nella fascia; `courtId`/`weekday` null = vale per tutti).
+  Il prezzo dello slot deriva da qui ed è sia costo prenotazione sia importo penale (vedi §6, RF-CFG-6).
 - **Closure** — `id, courtId?, startAt, endAt, reason` (eccezioni/manutenzione/maltempo)
 - **Booking** — `id, courtId, memberId, startAt, endAt, status (CONFIRMED/CANCELLED/NO_SHOW/COMPLETED),
-  price, freeCancellationDeadline, createdBy, createdAt, cancelledAt?, cancelledBy?`
+  price (congelato alla creazione dalla PriceRule), freeCancellationDeadline, createdBy, createdAt,
+  cancelledAt?, cancelledBy?`
   - **Vincolo di unicità**: `(courtId, startAt)` univoco tra prenotazioni attive → anti-overbooking a DB.
-- **Charge** — `id, bookingId, memberId, type (LATE_CANCELLATION/NO_SHOW), amount, status (DUE/PAID/WAIVED),
-  reason?, createdAt, settledAt?, settledBy?`
+- **Charge** — `id, bookingId, memberId, type (LATE_CANCELLATION/NO_SHOW), amount (= booking.price),
+  status (DUE/PAID/WAIVED), reason?, createdAt, settledAt?, settledBy?`
 - **BookingPolicy** (config) — `cancellationModel, cancellationHours, maxAdvanceDays, slotDurationMinutes,
-  lateCancellationFee, noShowFee, maxActiveBookingsPerMember`
+  maxActiveBookingsPerMember` (la penale non è un importo a sé: è il `price` dello slot).
 - **AuditLog** — `id, actorId, action, entity, entityId, before, after, createdAt`
 
 Note edge case da coprire:
 - Slot a cavallo di mezzanotte / cambio ora legale (gestire con timezone, non con orari "naïve").
 - Disdetta di slot già iniziato/passato → non consentita.
-- Tessera che scade **tra** la prenotazione e lo slot: policy da decidere (vedi §13 Domande aperte).
+- Sovrapposizione/lacune tra fasce prezzo: validare le `PriceRule` (no buchi non coperti, no sovrapposizioni
+  ambigue); definire una tariffa di default per slot non coperti.
+- Tessera che scade **tra** la prenotazione e lo slot: la prenotazione già confermata resta valida; non se
+  ne creano di nuove con tessera non `VALID` (vedi RF-MEMBER-3).
 
 ---
 
 ## 8) API (bozza, REST)
 
 Tutte le rotte passano dal client API centralizzato lato web; RBAC e validazione (schema) lato server.
-Formato errori uniforme `{ code, message, details? }` con codici business: `MEMBERSHIP_EXPIRED`,
-`SLOT_TAKEN`, `OUTSIDE_BOOKING_WINDOW`, `CANCELLATION_LATE`, `BOOKING_NOT_FOUND`.
+Formato errori uniforme `{ code, message, details? }` con codici business: `MEMBERSHIP_NOT_VALID`
+(copre `PENDING`/`EXPIRED`/`SUSPENDED`), `SLOT_TAKEN`, `OUTSIDE_BOOKING_WINDOW`, `CANCELLATION_LATE`,
+`BOOKING_NOT_FOUND`.
 
 | Metodo | Endpoint                         | Ruolo            | Descrizione |
 |--------|----------------------------------|------------------|-------------|
@@ -232,8 +265,12 @@ Formato errori uniforme `{ code, message, details? }` con codici business: `MEMB
 | POST   | `/charges/:id/settle`            | Front desk+      | Registra pagamento addebito |
 | POST   | `/charges/:id/waive`             | Manager+         | Esonera con motivazione |
 | CRUD   | `/admin/opening-rules`           | Admin            | Configura slot |
+| CRUD   | `/admin/price-rules`             | Admin            | Prezzi per fascia oraria |
+| POST   | `/admin/slots/bulk-edit`         | Admin            | Edizione multipla slot (prezzo/durata/apertura su selezione) |
 | CRUD   | `/admin/closures`                | Admin/Manager    | Chiusure/eccezioni |
 | PUT    | `/admin/booking-policy`          | Admin            | Aggiorna policy |
+| POST   | `/auth/register`                 | pubblico         | Auto-registrazione socio (nasce `PENDING`) |
+| POST   | `/members/:id/validate`          | Front desk+      | Valida socio: dati tessera → `VALID` (o rifiuta/sospende) |
 | CRUD   | `/members`                       | Front desk+      | Gestione soci/tessere |
 
 Con l'architettura scelta (§9) queste rotte **non sono un server Node separato**: si realizzano come
@@ -304,14 +341,17 @@ una sola volta a tutta l'app.
 
 ## 11) Roadmap a fasi
 
-**Fase 0 — Fondamenta (già parzialmente presente)**
-- Monorepo, AppShell/Page, design system base, health check, config env. ✅ (skeleton esistente)
-- Aggiungere DB + migrazioni + tipi shared estesi.
+**Fase 0 — Fondamenta**
+- Frontend PWA (manifest + service worker) dallo skeleton React/Vite/Tailwind; AppShell/Page e design
+  system base. ✅ skeleton UI esistente.
+- Progetto **Supabase**: schema + migrazioni, vincolo anti-overbooking `(courtId, startAt)`, Auth, RLS,
+  tipi shared estesi allineati allo schema. Deploy su Cloudflare Pages da Git + ping keep-alive.
 
 **Fase 1 — MVP prenotazioni**
-- Configurazione slot/orari (Admin) e generazione disponibilità.
-- Griglia disponibilità + creazione prenotazione atomica con check tessera.
-- Disdetta con regola "giorno prima" + generazione charge tardiva/no-show.
+- Configurazione slot/orari (Admin), **prezzi per fascia oraria** ed **edizione multipla degli slot**.
+- **Auto-registrazione socio con validazione staff** (stato `PENDING` → `VALID`).
+- Griglia disponibilità + creazione prenotazione atomica con check tessera `VALID` (blocco se scaduta).
+- Disdetta con regola "giorno prima" + generazione charge (= prezzo del campo) per tardiva/no-show.
 - Storico prenotazioni e addebiti lato socio.
 - Notifiche conferma/disdetta (email/SMS già predisposti).
 - UI conforme WCAG 2.2 AA sui flussi critici.
@@ -322,7 +362,7 @@ una sola volta a tutta l'app.
 - Report base (occupazione campi, no-show, incassi).
 
 **Fase 3 — Estensioni (post-MVP)**
-- Pagamento online disdetta (gateway), check-in, liste d'attesa, prenotazioni ricorrenti, prezzi per fascia.
+- Pagamento online disdetta (gateway), check-in, liste d'attesa, prenotazioni ricorrenti.
 
 ---
 
@@ -331,11 +371,16 @@ una sola volta a tutta l'app.
 Coerente con DEV_BEST_PRACTICE §10.3 (unit test su regole critiche).
 
 - **Anti-overbooking**: due POST concorrenti sullo stesso slot → 1 successo, 1 `SLOT_TAKEN`. *(unit/integration)*
-- **Tessera**: socio `EXPIRED` non può prenotare → `MEMBERSHIP_EXPIRED`. *(unit)*
+- **Tessera**: socio `PENDING`/`EXPIRED`/`SUSPENDED` non può prenotare → `MEMBERSHIP_NOT_VALID`. *(unit)*
+- **Registrazione**: auto-registrazione crea socio `PENDING`; validazione staff → `VALID` abilita la
+  prenotazione. *(integration)*
+- **Prezzo per fascia**: lo slot assume il `price` della `PriceRule` corretta; prenotazione congela il
+  prezzo. *(unit)*
+- **Edizione multipla**: bulk-edit aggiorna N slot in un'unica operazione tracciata in audit. *(integration)*
 - **Finestra**: prenotazione oltre `maxAdvanceDays` → `OUTSIDE_BOOKING_WINDOW`. *(unit)*
 - **Disdetta gratuita**: `now <= deadline` → nessun charge, stato `CANCELLED`. *(unit, casi limite mezzanotte/DST)*
-- **Disdetta tardiva**: `now > deadline` → charge `LATE_CANCELLATION` con importo corretto. *(unit)*
-- **No-show**: segnalazione genera charge `NO_SHOW`. *(unit)*
+- **Disdetta tardiva**: `now > deadline` → charge `LATE_CANCELLATION` di importo = `booking.price`. *(unit)*
+- **No-show**: segnalazione genera charge `NO_SHOW` di importo = `booking.price`. *(unit)*
 - **Esonero**: richiede motivazione, scrive audit log. *(unit)*
 - **Accessibilità**: flussi "prenota" e "disdici" superano audit WCAG 2.2 AA (contrasto, target, tastiera,
   screen reader), verificati con utente reale over 50. *(test manuale + automatizzato es. axe)*
@@ -345,13 +390,17 @@ Coerente con DEV_BEST_PRACTICE §10.3 (unit test su regole critiche).
 ## 13) Domande aperte (da confermare col committente)
 
 1. **Soglia disdetta**: confermare modello di default "entro le 23:59 del giorno prima" vs "X ore prima"?
-2. **Importo penale**: quanto è la quota di disdetta tardiva/no-show? È uguale al prezzo dello slot?
-3. **Prezzo slot**: i campi sono gratuiti per i soci (solo penale in caso di no-show) o c'è un costo per
-   prenotazione? Prezzi diversi per fascia oraria?
+2. ~~**Importo penale**~~ — **RISOLTO**: la penale è **pari al prezzo del campo** per quello slot/fascia (§6).
+3. ~~**Prezzo slot**~~ — **RISOLTO**: prezzi **per fascia oraria** configurabili dall'admin, con **edizione
+   multipla degli slot** (§4.1 RF-CFG-6/7).
 4. **Pagamento penale**: solo manuale allo sportello (MVP) o serve pagamento online da subito?
-5. **Registrazione soci**: self-registration con validazione staff, o solo creazione da parte dello staff?
-6. **Tessera che scade tra prenotazione e gioco**: si blocca alla prenotazione o anche se scade prima dello slot?
+   *(Default assunto: manuale in MVP, online in Fase 3.)*
+5. ~~**Registrazione soci**~~ — **RISOLTO**: **auto-registrazione del socio con validazione dello staff**
+   (stato `PENDING` → `VALID`) (§4.5 RF-MEMBER-1).
+6. ~~**Tessera che scade tra prenotazione e gioco**~~ — **RISOLTO**: la prenotazione confermata resta valida;
+   con tessera non `VALID` non si creano nuove prenotazioni (§4.5 RF-MEMBER-3).
 7. **Limiti**: numero massimo di prenotazioni attive per socio? Prenotazioni ricorrenti necessarie in MVP?
+   *(Default assunto: limite generoso/assente in MVP, ricorrenti in Fase 3.)*
 8. ~~**Database/hosting**~~ — **RISOLTO**: PWA su Cloudflare Pages + Supabase (PostgreSQL), costo 0,
    niente SQLite/server da gestire (vedi §9).
 
