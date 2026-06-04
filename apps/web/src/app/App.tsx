@@ -76,10 +76,13 @@ const Gate = () => {
   return isAuthenticated ? <AuthenticatedApp /> : <LoginPage />;
 };
 
+// Routing coerente con il base path del deploy (GitHub Pages: "/<repo>").
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export const App = () => (
   <ToastProvider>
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Gate />
       </BrowserRouter>
     </AuthProvider>

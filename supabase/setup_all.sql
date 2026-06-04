@@ -1,0 +1,772 @@
+-- VBS — Setup completo del database (generato da migrations/*.sql + seed.sql).
+-- Incolla questo file nello SQL Editor di Supabase (Run) per creare tutto in una volta.
+-- Rigenera con: bash supabase/tests/build_setup.sh
+
+-- ============================================================
+-- 20260604000001_init.sql
+-- ============================================================
+-- VBS — Schema iniziale prenotazioni campi beach volley.
+-- Backend = unica fonte di verità (DEV_BEST_PRACTICE §1). Le regole di business
+-- vivono in vincoli DB + funzioni (vedi 20260604000003_functions.sql).
+
+-- Estensioni -----------------------------------------------------------------
+create extension if not exists "pgcrypto"; -- gen_random_uuid()
+
+-- Enum -----------------------------------------------------------------------
+create type membership_status as enum ('PENDING', 'VALID', 'EXPIRED', 'SUSPENDED');
+create type booking_status   as enum ('CONFIRMED', 'CANCELLED', 'NO_SHOW', 'COMPLETED');
+create type charge_type      as enum ('LATE_CANCELLATION', 'NO_SHOW');
+create type charge_status    as enum ('DUE', 'PAID', 'WAIVED');
+create type app_role         as enum ('ADMIN', 'MANAGER', 'FRONT_DESK', 'BAR_STAFF', 'COACH', 'MEMBER');
+create type cancellation_model as enum ('CALENDAR_DAY_BEFORE', 'ROLLING_HOURS');
+
+-- Soci / utenti --------------------------------------------------------------
+-- members.id coincide con auth.users.id: ogni account ha un profilo socio.
+create table members (
+  id                    uuid primary key references auth.users (id) on delete cascade,
+  full_name             text not null default '',
+  email                 text,
+  phone                 text,
+  role                  app_role not null default 'MEMBER',
+  aics_number           text,
+  membership_start_date date,
+  membership_end_date   date,
+  membership_status     membership_status not null default 'PENDING',
+  validated_by          uuid references members (id),
+  validated_at          timestamptz,
+  created_at            timestamptz not null default now()
+);
+
+-- Campi ----------------------------------------------------------------------
+create table courts (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Regole di apertura (generano gli slot prenotabili) -------------------------
+-- court_id null = vale per tutti i campi. weekday: 0=domenica … 6=sabato.
+create table opening_rules (
+  id                     uuid primary key default gen_random_uuid(),
+  court_id               uuid references courts (id) on delete cascade,
+  weekday                smallint not null check (weekday between 0 and 6),
+  open_time              time not null,
+  close_time             time not null,
+  slot_duration_minutes  smallint not null default 60 check (slot_duration_minutes > 0),
+  active                 boolean not null default true,
+  check (close_time > open_time)
+);
+
+-- Prezzi per fascia oraria (RF-CFG-6) ----------------------------------------
+-- Il prezzo dello slot è sia costo prenotazione sia importo penale (§6).
+create table price_rules (
+  id         uuid primary key default gen_random_uuid(),
+  court_id   uuid references courts (id) on delete cascade,
+  weekday    smallint check (weekday between 0 and 6),
+  start_time time not null,
+  end_time   time not null,
+  price      numeric(10, 2) not null check (price >= 0),
+  created_at timestamptz not null default now(),
+  check (end_time > start_time)
+);
+
+-- Chiusure / eccezioni (manutenzione, festività, maltempo) -------------------
+create table closures (
+  id         uuid primary key default gen_random_uuid(),
+  court_id   uuid references courts (id) on delete cascade,
+  start_at   timestamptz not null,
+  end_at     timestamptz not null,
+  reason     text,
+  created_at timestamptz not null default now(),
+  check (end_at > start_at)
+);
+
+-- Prenotazioni ---------------------------------------------------------------
+create table bookings (
+  id                         uuid primary key default gen_random_uuid(),
+  court_id                   uuid not null references courts (id),
+  member_id                  uuid not null references members (id),
+  start_at                   timestamptz not null,
+  end_at                     timestamptz not null,
+  status                     booking_status not null default 'CONFIRMED',
+  price                      numeric(10, 2) not null default 0,
+  free_cancellation_deadline timestamptz not null,
+  created_by                 uuid references members (id),
+  created_at                 timestamptz not null default now(),
+  cancelled_at               timestamptz,
+  cancelled_by               uuid references members (id),
+  check (end_at > start_at)
+);
+
+-- Anti-overbooking: uno slot attivo per campo (DEV_BEST_PRACTICE §5).
+create unique index bookings_active_slot_uidx
+  on bookings (court_id, start_at)
+  where status = 'CONFIRMED';
+
+create index bookings_member_idx on bookings (member_id);
+create index bookings_start_idx  on bookings (start_at);
+
+-- Addebiti (penale = prezzo del campo, §6) -----------------------------------
+create table charges (
+  id         uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references bookings (id),
+  member_id  uuid not null references members (id),
+  type       charge_type not null,
+  amount     numeric(10, 2) not null check (amount >= 0),
+  status     charge_status not null default 'DUE',
+  reason     text,
+  created_at timestamptz not null default now(),
+  settled_at timestamptz,
+  settled_by uuid references members (id)
+);
+
+create index charges_member_idx on charges (member_id);
+
+-- Policy di prenotazione (singleton) -----------------------------------------
+create table booking_policy (
+  id                            smallint primary key default 1 check (id = 1),
+  cancellation_model            cancellation_model not null default 'CALENDAR_DAY_BEFORE',
+  cancellation_hours            smallint not null default 24,
+  max_advance_days              smallint not null default 14,
+  slot_duration_minutes         smallint not null default 60,
+  max_active_bookings_per_member smallint not null default 0, -- 0 = illimitato
+  timezone                      text not null default 'Europe/Rome'
+);
+
+insert into booking_policy (id) values (1);
+
+-- Audit log -------------------------------------------------------------------
+create table audit_log (
+  id         uuid primary key default gen_random_uuid(),
+  actor_id   uuid,
+  action     text not null,
+  entity     text not null,
+  entity_id  uuid,
+  before     jsonb,
+  after      jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- Trigger: ogni nuovo utente auth crea un profilo socio PENDING ---------------
+create or replace function handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.members (id, email, full_name, membership_status)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'full_name', ''),
+    'PENDING'
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function handle_new_user();
+
+-- ============================================================
+-- 20260604000002_functions.sql
+-- ============================================================
+-- VBS — Logica di business lato database (unica fonte di verità).
+-- Tutte SECURITY DEFINER: applicano le regole e bypassano RLS in modo
+-- controllato. Il frontend invoca queste funzioni via supabase.rpc().
+
+-- Helper: ruolo del chiamante ------------------------------------------------
+create or replace function current_role_name()
+returns app_role
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from members where id = auth.uid();
+$$;
+
+create or replace function is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(current_role_name() in ('ADMIN', 'MANAGER', 'FRONT_DESK'), false);
+$$;
+
+-- Prezzo del campo per uno slot, in base alle fasce orarie (RF-CFG-6) --------
+-- Specificità: regola per campo+giorno > campo > giorno > generale.
+create or replace function price_for_slot(p_court_id uuid, p_start_at timestamptz)
+returns numeric
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_tz    text;
+  v_local timestamp;
+  v_price numeric;
+begin
+  select timezone into v_tz from booking_policy where id = 1;
+  v_local := p_start_at at time zone v_tz;
+
+  select price into v_price
+  from price_rules
+  where (court_id = p_court_id or court_id is null)
+    and (weekday = extract(dow from v_local)::int or weekday is null)
+    and start_time <= v_local::time
+    and end_time > v_local::time
+  order by (court_id is not null) desc, (weekday is not null) desc
+  limit 1;
+
+  return coalesce(v_price, 0);
+end;
+$$;
+
+-- Scadenza disdetta gratuita in base alla policy (§6) ------------------------
+create or replace function compute_cancellation_deadline(p_start_at timestamptz)
+returns timestamptz
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_model cancellation_model;
+  v_hours int;
+  v_tz    text;
+  v_local timestamp;
+begin
+  select cancellation_model, cancellation_hours, timezone
+    into v_model, v_hours, v_tz
+  from booking_policy where id = 1;
+
+  if v_model = 'ROLLING_HOURS' then
+    return p_start_at - make_interval(hours => v_hours);
+  end if;
+
+  -- CALENDAR_DAY_BEFORE: 23:59:59 del giorno precedente, ora locale impianto.
+  v_local := p_start_at at time zone v_tz;
+  return (date_trunc('day', v_local) - interval '1 second') at time zone v_tz;
+end;
+$$;
+
+-- Crea prenotazione (atomica, anti-overbooking, check tessera) ---------------
+create or replace function create_booking(
+  p_court_id  uuid,
+  p_start_at  timestamptz,
+  p_member_id uuid default null
+)
+returns bookings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor   uuid := auth.uid();
+  v_member  uuid;
+  v_status  membership_status;
+  v_policy  booking_policy%rowtype;
+  v_slot    smallint;
+  v_end     timestamptz;
+  v_price   numeric;
+  v_dl      timestamptz;
+  v_active  int;
+  v_row     bookings%rowtype;
+begin
+  -- Lo staff può prenotare per conto di un socio; il socio solo per sé.
+  if p_member_id is not null and p_member_id <> v_actor then
+    if not is_staff() then
+      raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+    end if;
+    v_member := p_member_id;
+  else
+    v_member := v_actor;
+  end if;
+
+  select * into v_policy from booking_policy where id = 1;
+
+  -- Tessera valida (RF-BOOK-3): PENDING/EXPIRED/SUSPENDED non possono prenotare.
+  select membership_status into v_status from members where id = v_member;
+  if v_status is distinct from 'VALID' then
+    raise exception 'MEMBERSHIP_NOT_VALID' using errcode = 'P0001';
+  end if;
+
+  -- Finestra di prenotazione: non nel passato, entro max_advance_days.
+  if p_start_at <= now()
+     or p_start_at > now() + make_interval(days => v_policy.max_advance_days) then
+    raise exception 'OUTSIDE_BOOKING_WINDOW' using errcode = 'P0001';
+  end if;
+
+  -- Limite prenotazioni attive (0 = illimitato).
+  if v_policy.max_active_bookings_per_member > 0 then
+    select count(*) into v_active
+    from bookings
+    where member_id = v_member and status = 'CONFIRMED' and start_at > now();
+    if v_active >= v_policy.max_active_bookings_per_member then
+      raise exception 'OUTSIDE_BOOKING_WINDOW' using errcode = 'P0001';
+    end if;
+  end if;
+
+  v_slot  := v_policy.slot_duration_minutes;
+  v_end   := p_start_at + make_interval(mins => v_slot);
+  v_price := price_for_slot(p_court_id, p_start_at);
+  v_dl    := compute_cancellation_deadline(p_start_at);
+
+  begin
+    insert into bookings (court_id, member_id, start_at, end_at, price,
+                          free_cancellation_deadline, created_by)
+    values (p_court_id, v_member, p_start_at, v_end, v_price, v_dl, v_actor)
+    returning * into v_row;
+  exception when unique_violation then
+    raise exception 'SLOT_TAKEN' using errcode = 'P0001';
+  end;
+
+  insert into audit_log (actor_id, action, entity, entity_id, after)
+  values (v_actor, 'BOOKING_CREATE', 'booking', v_row.id, to_jsonb(v_row));
+
+  return v_row;
+end;
+$$;
+
+-- Disdetta: gratuita entro deadline, altrimenti charge = prezzo del campo ----
+create or replace function cancel_booking(p_booking_id uuid)
+returns bookings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_b     bookings%rowtype;
+  v_before jsonb;
+begin
+  select * into v_b from bookings where id = p_booking_id;
+  if not found then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  if v_b.member_id <> v_actor and not is_staff() then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  if v_b.status <> 'CONFIRMED' or v_b.start_at <= now() then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  v_before := to_jsonb(v_b);
+
+  update bookings
+     set status = 'CANCELLED', cancelled_at = now(), cancelled_by = v_actor
+   where id = p_booking_id
+   returning * into v_b;
+
+  -- Disdetta tardiva → addebito pari al prezzo del campo (§6).
+  if now() > v_b.free_cancellation_deadline and v_b.price > 0 then
+    insert into charges (booking_id, member_id, type, amount)
+    values (v_b.id, v_b.member_id, 'LATE_CANCELLATION', v_b.price);
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, before, after)
+  values (v_actor, 'BOOKING_CANCEL', 'booking', v_b.id, v_before, to_jsonb(v_b));
+
+  return v_b;
+end;
+$$;
+
+-- No-show (solo staff): charge = prezzo del campo ----------------------------
+create or replace function mark_no_show(p_booking_id uuid)
+returns bookings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_b     bookings%rowtype;
+begin
+  if not is_staff() then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  select * into v_b from bookings where id = p_booking_id;
+  if not found then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  update bookings set status = 'NO_SHOW' where id = p_booking_id returning * into v_b;
+
+  if v_b.price > 0 then
+    insert into charges (booking_id, member_id, type, amount)
+    values (v_b.id, v_b.member_id, 'NO_SHOW', v_b.price);
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, after)
+  values (v_actor, 'BOOKING_NO_SHOW', 'booking', v_b.id, to_jsonb(v_b));
+
+  return v_b;
+end;
+$$;
+
+-- Validazione socio da parte dello staff (RF-MEMBER-1) -----------------------
+create or replace function validate_member(
+  p_member_id uuid,
+  p_aics      text,
+  p_start     date,
+  p_end       date
+)
+returns members
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_m     members%rowtype;
+begin
+  if not is_staff() then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  update members
+     set aics_number = p_aics,
+         membership_start_date = p_start,
+         membership_end_date = p_end,
+         membership_status = (case when p_end >= current_date then 'VALID' else 'EXPIRED' end)::membership_status,
+         validated_by = v_actor,
+         validated_at = now()
+   where id = p_member_id
+   returning * into v_m;
+
+  if not found then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, after)
+  values (v_actor, 'MEMBER_VALIDATE', 'member', v_m.id, to_jsonb(v_m));
+
+  return v_m;
+end;
+$$;
+
+-- Edizione multipla degli slot/regole prezzo (RF-CFG-7) ----------------------
+-- Aggiorna in blocco il prezzo per più price_rules in un'unica operazione.
+create or replace function bulk_update_price(p_ids uuid[], p_price numeric)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_count int;
+begin
+  if not is_staff() then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  update price_rules set price = p_price where id = any(p_ids);
+  get diagnostics v_count = row_count;
+
+  insert into audit_log (actor_id, action, entity, after)
+  values (v_actor, 'PRICE_BULK_UPDATE', 'price_rule',
+          jsonb_build_object('ids', p_ids, 'price', p_price, 'count', v_count));
+
+  return v_count;
+end;
+$$;
+
+-- Job giornaliero: scade le tessere (RF-MEMBER-4) ----------------------------
+create or replace function expire_memberships()
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+begin
+  update members
+     set membership_status = 'EXPIRED'
+   where membership_status = 'VALID'
+     and membership_end_date is not null
+     and membership_end_date < current_date;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- ============================================================
+-- 20260604000003_rls.sql
+-- ============================================================
+-- VBS — Row Level Security. Le scritture sui dati sensibili passano dalle
+-- funzioni SECURITY DEFINER (20260604000002): qui apriamo solo le letture
+-- necessarie e chiudiamo le scritture dirette. (DEV_BEST_PRACTICE §1/§5).
+
+alter table members        enable row level security;
+alter table courts         enable row level security;
+alter table opening_rules  enable row level security;
+alter table price_rules    enable row level security;
+alter table closures       enable row level security;
+alter table bookings       enable row level security;
+alter table charges        enable row level security;
+alter table booking_policy enable row level security;
+alter table audit_log      enable row level security;
+
+-- Members: ognuno vede sé stesso; lo staff vede e gestisce tutti -------------
+create policy members_select_self_or_staff on members
+  for select using (id = auth.uid() or is_staff());
+
+create policy members_update_staff on members
+  for update using (is_staff()) with check (is_staff());
+
+-- Configurazione (campi, orari, prezzi, chiusure): lettura a tutti gli
+-- autenticati (serve per la griglia disponibilità); scrittura solo staff -----
+create policy courts_select on courts
+  for select using (auth.role() = 'authenticated');
+create policy courts_write on courts
+  for all using (is_staff()) with check (is_staff());
+
+create policy opening_rules_select on opening_rules
+  for select using (auth.role() = 'authenticated');
+create policy opening_rules_write on opening_rules
+  for all using (is_staff()) with check (is_staff());
+
+create policy price_rules_select on price_rules
+  for select using (auth.role() = 'authenticated');
+create policy price_rules_write on price_rules
+  for all using (is_staff()) with check (is_staff());
+
+create policy closures_select on closures
+  for select using (auth.role() = 'authenticated');
+create policy closures_write on closures
+  for all using (is_staff()) with check (is_staff());
+
+-- Policy di prenotazione: lettura a tutti, modifica solo admin ---------------
+create policy booking_policy_select on booking_policy
+  for select using (auth.role() = 'authenticated');
+create policy booking_policy_update on booking_policy
+  for update using (current_role_name() = 'ADMIN')
+  with check (current_role_name() = 'ADMIN');
+
+-- Prenotazioni: il socio vede le proprie, lo staff tutte. Le scritture
+-- avvengono solo via funzioni (create/cancel/no_show), nessuna policy diretta.
+create policy bookings_select_own_or_staff on bookings
+  for select using (member_id = auth.uid() or is_staff());
+
+-- Addebiti: il socio vede i propri, lo staff tutti ---------------------------
+create policy charges_select_own_or_staff on charges
+  for select using (member_id = auth.uid() or is_staff());
+
+-- Audit log: solo staff in lettura ------------------------------------------
+create policy audit_select_staff on audit_log
+  for select using (is_staff());
+
+-- ============================================================
+-- 20260604000004_availability.sql
+-- ============================================================
+-- VBS — Disponibilità slot (giorno × campo × orario).
+-- SECURITY DEFINER: calcola gli slot da opening_rules/price_rules/closures e li
+-- marca FREE/TAKEN/UNAVAILABLE SENZA esporre le prenotazioni altrui (privacy +
+-- RLS): il socio vede l'occupazione, non chi ha prenotato.
+
+create or replace function get_availability(p_date date)
+returns table (
+  court_id   uuid,
+  court_name text,
+  start_at   timestamptz,
+  end_at     timestamptz,
+  price      numeric,
+  status     text
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_tz text;
+begin
+  select timezone into v_tz from booking_policy where id = 1;
+
+  return query
+  with slots as (
+    select distinct
+      c.id   as court_id,
+      c.name as court_name,
+      gs     as start_local,
+      gs + make_interval(mins => orr.slot_duration_minutes) as end_local
+    from courts c
+    join opening_rules orr
+      on (orr.court_id = c.id or orr.court_id is null)
+     and orr.active
+     and orr.weekday = extract(dow from p_date)::int
+    cross join lateral generate_series(
+      p_date + orr.open_time,
+      p_date + orr.close_time - make_interval(mins => orr.slot_duration_minutes),
+      make_interval(mins => orr.slot_duration_minutes)
+    ) as gs
+    where c.active
+  )
+  select
+    s.court_id,
+    s.court_name,
+    (s.start_local at time zone v_tz) as start_at,
+    (s.end_local   at time zone v_tz) as end_at,
+    price_for_slot(s.court_id, s.start_local at time zone v_tz) as price,
+    case
+      when (s.start_local at time zone v_tz) <= now() then 'UNAVAILABLE'
+      when exists (
+        select 1 from closures cl
+        where (cl.court_id = s.court_id or cl.court_id is null)
+          and tstzrange(cl.start_at, cl.end_at)
+              && tstzrange(s.start_local at time zone v_tz, s.end_local at time zone v_tz)
+      ) then 'UNAVAILABLE'
+      when exists (
+        select 1 from bookings b
+        where b.court_id = s.court_id
+          and b.status = 'CONFIRMED'
+          and b.start_at = (s.start_local at time zone v_tz)
+      ) then 'TAKEN'
+      else 'FREE'
+    end as status
+  from slots s
+  order by s.start_local, s.court_name;
+end;
+$$;
+
+grant execute on function get_availability(date) to authenticated;
+
+-- ============================================================
+-- 20260604000005_charges.sql
+-- ============================================================
+-- VBS — Gestione addebiti da parte dello staff: incasso ed esonero.
+
+-- Incasso di un addebito (registrazione manuale: contante/Satispay/wallet) ----
+create or replace function settle_charge(p_charge_id uuid)
+returns charges
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_c     charges%rowtype;
+begin
+  if not is_staff() then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  update charges
+     set status = 'PAID', settled_at = now(), settled_by = v_actor
+   where id = p_charge_id and status = 'DUE'
+   returning * into v_c;
+
+  if not found then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, after)
+  values (v_actor, 'CHARGE_SETTLE', 'charge', v_c.id, to_jsonb(v_c));
+
+  return v_c;
+end;
+$$;
+
+-- Esonero di un addebito (solo Manager/Admin, motivazione obbligatoria) -------
+create or replace function waive_charge(p_charge_id uuid, p_reason text)
+returns charges
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_c     charges%rowtype;
+begin
+  if current_role_name() not in ('ADMIN', 'MANAGER') then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+  if coalesce(btrim(p_reason), '') = '' then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  update charges
+     set status = 'WAIVED', reason = p_reason, settled_at = now(), settled_by = v_actor
+   where id = p_charge_id and status = 'DUE'
+   returning * into v_c;
+
+  if not found then
+    raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, after)
+  values (v_actor, 'CHARGE_WAIVE', 'charge', v_c.id, to_jsonb(v_c));
+
+  return v_c;
+end;
+$$;
+
+-- ============================================================
+-- 20260604000006_audit_config.sql
+-- ============================================================
+-- VBS — Audit automatico delle modifiche di configurazione (RF-CFG-8).
+-- Le tabelle orari/chiusure sono scrivibili direttamente dallo staff (RLS):
+-- un trigger registra ogni inserimento/modifica/cancellazione in audit_log.
+
+create or replace function audit_config_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into audit_log (actor_id, action, entity, entity_id, before, after)
+  values (
+    auth.uid(),
+    tg_op,
+    tg_table_name,
+    coalesce(new.id, old.id),
+    case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) end,
+    case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end
+  );
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+create trigger audit_opening_rules
+  after insert or update or delete on opening_rules
+  for each row execute function audit_config_change();
+
+create trigger audit_closures
+  after insert or update or delete on closures
+  for each row execute function audit_config_change();
+
+-- ============================================================
+-- seed.sql
+-- ============================================================
+-- VBS — Dati iniziali per sviluppo locale.
+
+-- 3 campi da beach volley
+insert into courts (name) values
+  ('Campo Beach 1'),
+  ('Campo Beach 2'),
+  ('Campo Beach 3');
+
+-- Orari di apertura: tutti i campi, ogni giorno 09:00–23:00, slot da 60 min.
+-- weekday 0=domenica … 6=sabato.
+insert into opening_rules (court_id, weekday, open_time, close_time, slot_duration_minutes)
+select null, gs, '09:00', '23:00', 60
+from generate_series(0, 6) as gs;
+
+-- Prezzi per fascia oraria (validi per tutti i campi e giorni):
+--   09:00–18:00 = 10€ (fascia ordinaria), 18:00–23:00 = 16€ (prime-time).
+insert into price_rules (court_id, weekday, start_time, end_time, price) values
+  (null, null, '09:00', '18:00', 10.00),
+  (null, null, '18:00', '23:00', 16.00);
