@@ -14,6 +14,7 @@ export const fetchAdminSummary = async (): Promise<AdminSummary> => {
     pendingMembers: Number(row?.pending_members ?? 0),
     chargesDueCount: Number(row?.charges_due_count ?? 0),
     chargesDueAmount: Number(row?.charges_due_amount ?? 0),
-    expiringSoon: Number(row?.expiring_soon ?? 0)
+    expiringSoon: Number(row?.expiring_soon ?? 0),
+    underfilled: Number(row?.underfilled ?? 0)
   };
 };

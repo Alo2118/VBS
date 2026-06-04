@@ -50,10 +50,13 @@ progetto Supabase gratuito.
 
 ## Aggiornare un database già configurato
 Se hai già eseguito `setup_all.sql` in passato, per le nuove funzionalità
-(telefono in registrazione, vista settimanale, riepilogo staff) ti basta
-eseguire **solo l'ultima migrazione** nello SQL Editor:
-[`supabase/migrations/20260604000007_enhancements.sql`](supabase/migrations/20260604000007_enhancements.sql).
-È sicura da rieseguire (idempotente). In alternativa puoi reincollare tutto
+esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applicato:
+- [`supabase/migrations/20260604000007_enhancements.sql`](supabase/migrations/20260604000007_enhancements.sql)
+  (telefono in registrazione, vista settimanale, riepilogo staff)
+- [`supabase/migrations/20260604000008_roster_recurring.sql`](supabase/migrations/20260604000008_roster_recurring.sql)
+  (campi Giallo/Bianco/Verde, rosa giocatori, costo diviso, prenotazioni fisse)
+
+Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.
 
 ## Verifica delle regole (facoltativa, richiede Postgres 16 locale)

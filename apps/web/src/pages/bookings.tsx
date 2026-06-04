@@ -7,8 +7,13 @@ import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
+import { Input } from "@/shared/ui/input";
 import { fetchWeekAvailability } from "@/shared/api/availability";
-import { createBooking, fetchBookingPolicy } from "@/shared/api/bookings";
+import {
+  createBooking,
+  createRecurringBooking,
+  fetchBookingPolicy
+} from "@/shared/api/bookings";
 import { useAuth } from "@/shared/auth/auth-context";
 import { MembershipBanner } from "@/shared/auth/membership-banner";
 import {
@@ -25,7 +30,7 @@ import { formatEur } from "@/shared/utils/money";
 
 export const BookingsPage = () => {
   const notify = useToast();
-  const { canBook } = useAuth();
+  const { canBook, isStaff } = useAuth();
   const today = useMemo(() => new Date(), []);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(today));
   const [day, setDay] = useState<Date>(today);
@@ -34,6 +39,8 @@ export const BookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<WeekSlot | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [recurring, setRecurring] = useState(false);
+  const [until, setUntil] = useState("");
 
   const load = useCallback(
     async (start: Date) => {
@@ -57,13 +64,28 @@ export const BookingsPage = () => {
     fetchBookingPolicy().then(setPolicy).catch(() => undefined);
   }, []);
 
+  const closeConfirm = () => {
+    setSelected(null);
+    setRecurring(false);
+    setUntil("");
+  };
+
   const onConfirm = async () => {
     if (!selected) return;
     setConfirming(true);
     try {
-      await createBooking(selected.courtId, selected.startAt);
-      notify("Prenotazione confermata!", "success");
-      setSelected(null);
+      if (recurring && until) {
+        const res = await createRecurringBooking(selected.courtId, selected.startAt, until);
+        notify(
+          `Prenotazione fissa: ${res.created} occorrenze create` +
+            (res.skipped.length ? `, ${res.skipped.length} saltate (slot occupato).` : "."),
+          "success"
+        );
+      } else {
+        await createBooking(selected.courtId, selected.startAt);
+        notify("Prenotazione confermata! Aggiungi i giocatori da «Le mie prenotazioni».", "success");
+      }
+      closeConfirm();
       await load(weekStart);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Prenotazione non riuscita.", "error");
@@ -227,14 +249,14 @@ export const BookingsPage = () => {
       <Modal
         open={Boolean(selected)}
         title="Conferma prenotazione"
-        onClose={() => setSelected(null)}
+        onClose={closeConfirm}
         footer={
           <>
-            <Button variant="ghost" size="lg" onClick={() => setSelected(null)}>
+            <Button variant="ghost" size="lg" onClick={closeConfirm}>
               Annulla
             </Button>
-            <Button size="lg" onClick={onConfirm} disabled={confirming}>
-              {confirming ? "Confermo…" : "Conferma"}
+            <Button size="lg" onClick={onConfirm} disabled={confirming || (recurring && !until)}>
+              {confirming ? "Confermo…" : recurring ? "Crea fissa" : "Conferma"}
             </Button>
           </>
         }
@@ -247,10 +269,38 @@ export const BookingsPage = () => {
               label="Orario"
               value={`${formatTime(selected.startAt)}–${formatTime(selected.endAt)}`}
             />
-            <Row label="Prezzo" value={formatEur(selected.price)} strong />
-            <p className="pt-2 text-sm text-muted">
+            <Row label="Costo campo" value={formatEur(selected.price)} strong />
+            <p className="pt-1 text-sm text-muted">
+              Il costo si divide tra i giocatori (minimo {policy?.minPlayers ?? 4} soci con tessera
+              valida). Aggiungi i giocatori dopo, da «Le mie prenotazioni».
+            </p>
+            <p className="text-sm text-muted">
               {cancellationNote} Dopo, in caso di mancata disdetta è dovuto il prezzo del campo.
             </p>
+
+            {/* Prenotazione fissa (solo staff) */}
+            {isStaff && (
+              <div className="mt-3 space-y-2 border-t border-slate-800 pt-3">
+                <label className="flex items-center gap-2 text-base">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={recurring}
+                    onChange={(e) => setRecurring(e.target.checked)}
+                  />
+                  Ripeti ogni settimana (prenotazione fissa)
+                </label>
+                {recurring && (
+                  <Input
+                    label="Fino al"
+                    type="date"
+                    value={until}
+                    min={toIsoDate(day)}
+                    onChange={(e) => setUntil(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
           </dl>
         )}
       </Modal>

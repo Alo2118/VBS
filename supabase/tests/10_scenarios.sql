@@ -231,4 +231,64 @@ begin
   raise notice 'TEST 11 OK: riepilogo solo staff';
 end $$;
 
+-- 12) Rosa: capogruppo automatico, solo soci validi, capogruppo non rimovibile
+do $$
+declare v_court uuid; v_start timestamptz; v_b bookings%rowtype; v_n int;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name limit 1;
+  v_start := ((current_date + 3)::timestamp + time '10:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  select count(*) into v_n from booking_players where booking_id = v_b.id;
+  if v_n <> 1 then raise exception 'TEST 12 FALLITO: capogruppo non in rosa (%)', v_n; end if;
+  -- aggiungo un socio valido (lo staff è VALID)
+  perform add_player(v_b.id, '11111111-1111-1111-1111-111111111111');
+  select count(*) into v_n from booking_players where booking_id = v_b.id;
+  if v_n <> 2 then raise exception 'TEST 12 FALLITO: attesi 2 in rosa, ottenuto %', v_n; end if;
+  -- socio non valido (PENDING) rifiutato
+  begin
+    perform add_player(v_b.id, '33333333-3333-3333-3333-333333333333');
+    raise exception 'TEST 12 FALLITO: aggiunto socio non valido';
+  exception when others then
+    if sqlerrm <> 'MEMBERSHIP_NOT_VALID' then raise; end if;
+  end;
+  -- il capogruppo non può essere rimosso dalla rosa
+  begin
+    perform remove_player(v_b.id, '22222222-2222-2222-2222-222222222222');
+    raise exception 'TEST 12 FALLITO: capogruppo rimosso';
+  exception when others then
+    if sqlerrm <> 'NOT_AUTHORIZED' then raise; end if;
+  end;
+  raise notice 'TEST 12 OK: rosa con capogruppo, validità e vincoli';
+end $$;
+
+-- 13) Prenotazione fissa: genera le occorrenze settimanali fino alla data
+do $$
+declare v_court uuid; v_start timestamptz; v_res jsonb;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  select id into v_court from courts order by name desc limit 1; -- 'Verde' (slot liberi)
+  v_start := ((current_date + 1)::timestamp + time '09:00') at time zone 'Europe/Rome';
+  select create_recurring_booking(
+    v_court, v_start, (current_date + 21)::date,
+    '22222222-2222-2222-2222-222222222222'
+  ) into v_res;
+  if (v_res->>'created')::int <> 3 then
+    raise exception 'TEST 13 FALLITO: attese 3 occorrenze, ottenute %', v_res->>'created';
+  end if;
+  raise notice 'TEST 13 OK: prenotazione fissa, % occorrenze generate', v_res->>'created';
+end $$;
+
+-- 14) Ricerca soci validi per comporre la rosa
+do $$
+declare v_n int;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select count(*) into v_n from search_valid_members('');
+  if v_n < 2 then
+    raise exception 'TEST 14 FALLITO: attesi >= 2 soci validi, ottenuti %', v_n;
+  end if;
+  raise notice 'TEST 14 OK: ricerca soci validi (% trovati)', v_n;
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;

@@ -76,6 +76,8 @@ export interface PriceRule {
   startTime: string;
   endTime: string;
   price: number;
+  /** Quota fissa a testa quando si supera la soglia di giocatori. */
+  perHeadPrice: number;
 }
 
 export interface Closure {
@@ -93,12 +95,30 @@ export interface Booking {
   startAt: string;
   endAt: string;
   status: BookingStatus;
+  /** Prezzo del campo per lo slot (penale del capogruppo). */
   price: number;
+  /** Quota a testa applicata oltre la soglia (snapshot). */
+  perHeadPrice: number;
+  /** Identifica le occorrenze di una prenotazione fissa. */
+  seriesId?: string;
   freeCancellationDeadline: string;
   createdBy?: string;
   createdAt: string;
   cancelledAt?: string;
   cancelledBy?: string;
+}
+
+/** Un giocatore nella rosa di uno slot. */
+export interface BookingPlayer {
+  memberId: string;
+  fullName: string;
+  isBooker: boolean;
+}
+
+/** Socio (minimo) restituito dalla ricerca per comporre la rosa. */
+export interface MemberLite {
+  id: string;
+  fullName: string;
 }
 
 export interface Charge {
@@ -121,6 +141,10 @@ export interface BookingPolicy {
   slotDurationMinutes: number;
   maxActiveBookingsPerMember: number;
   timezone: string;
+  /** Minimo di soci validi richiesti per giocare uno slot. */
+  minPlayers: number;
+  /** Oltre questo numero di giocatori si passa alla quota fissa a testa. */
+  perHeadThreshold: number;
 }
 
 export type SlotStatus = "FREE" | "TAKEN" | "UNAVAILABLE";
@@ -148,4 +172,6 @@ export interface AdminSummary {
   chargesDueCount: number;
   chargesDueAmount: number;
   expiringSoon: number;
+  /** Slot in arrivo sotto il minimo di giocatori. */
+  underfilled: number;
 }

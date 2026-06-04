@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Booking } from "@vbs/shared";
+import type { Booking, BookingPolicy } from "@vbs/shared";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Modal } from "@/shared/ui/modal";
@@ -7,9 +7,12 @@ import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useToast } from "@/shared/ui/toast";
-import { cancelBooking, fetchMyBookings } from "@/shared/api/bookings";
+import { cancelBooking, fetchBookingPolicy, fetchMyBookings } from "@/shared/api/bookings";
+import type { MyBooking } from "@/shared/api/bookings";
+import { RosterModal } from "@/shared/booking/roster-modal";
 import { formatDateTime, formatTime } from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
+import { perPlayerShare } from "@/shared/utils/pricing";
 
 const statusLabel: Record<Booking["status"], { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
   CONFIRMED: { label: "Confermata", tone: "success" },
@@ -20,9 +23,11 @@ const statusLabel: Record<Booking["status"], { label: string; tone: "success" | 
 
 export const MyBookingsPage = () => {
   const notify = useToast();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<MyBooking[]>([]);
+  const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [target, setTarget] = useState<Booking | null>(null);
+  const [roster, setRoster] = useState<MyBooking | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -39,6 +44,10 @@ export const MyBookingsPage = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    fetchBookingPolicy().then(setPolicy).catch(() => undefined);
+  }, []);
 
   const onCancel = async () => {
     if (!target) return;
@@ -61,13 +70,12 @@ export const MyBookingsPage = () => {
     }
   };
 
-  // È tardi per la disdetta gratuita? (penale = prezzo del campo)
   const lateCancellation = useMemo(
     () => (target ? new Date() > new Date(target.freeCancellationDeadline) : false),
     [target]
   );
 
-  const canCancel = (b: Booking) =>
+  const canManage = (b: Booking) =>
     b.status === "CONFIRMED" && new Date(b.startAt) > new Date();
 
   return (
@@ -76,29 +84,60 @@ export const MyBookingsPage = () => {
         <Spinner />
       ) : bookings.length === 0 ? (
         <Card>
-          <p className="text-center text-base text-muted">
-            Non hai ancora prenotazioni.
-          </p>
+          <p className="text-center text-base text-muted">Non hai ancora prenotazioni.</p>
         </Card>
       ) : (
-        bookings.map((b) => (
-          <Card key={b.id} className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-semibold capitalize">{formatDateTime(b.startAt)}</p>
-              <p className="text-base text-muted">
-                Fine {formatTime(b.endAt)} · {formatEur(b.price)}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <StatusPill {...statusLabel[b.status]} />
-              {canCancel(b) && (
-                <Button variant="danger" size="lg" onClick={() => setTarget(b)}>
-                  Disdici
-                </Button>
+        bookings.map((b) => {
+          const upcoming = canManage(b);
+          const share =
+            policy && b.players > 0
+              ? perPlayerShare({
+                  players: b.players,
+                  courtPrice: b.price,
+                  perHeadPrice: b.perHeadPrice,
+                  threshold: policy.perHeadThreshold
+                })
+              : null;
+          const underfilled = policy ? b.players < policy.minPlayers : false;
+          return (
+            <Card key={b.id} className="space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold capitalize">{formatDateTime(b.startAt)}</p>
+                  <p className="text-base text-muted">
+                    Fine {formatTime(b.endAt)} · campo {formatEur(b.price)}
+                    {b.seriesId ? " · fissa" : ""}
+                  </p>
+                </div>
+                <StatusPill {...statusLabel[b.status]} />
+              </div>
+
+              {upcoming && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
+                  <p className="text-base">
+                    {b.players} {b.players === 1 ? "giocatore" : "giocatori"}
+                    {share !== null && (
+                      <span className="text-muted"> · {formatEur(share)} a testa</span>
+                    )}
+                    {underfilled && (
+                      <span className="ml-2 text-amber-300">
+                        servono almeno {policy?.minPlayers}
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button variant="secondary" size="lg" onClick={() => setRoster(b)}>
+                      Giocatori
+                    </Button>
+                    <Button variant="danger" size="lg" onClick={() => setTarget(b)}>
+                      Disdici
+                    </Button>
+                  </div>
+                </div>
               )}
-            </div>
-          </Card>
-        ))
+            </Card>
+          );
+        })
       )}
 
       <Modal
@@ -132,6 +171,17 @@ export const MyBookingsPage = () => {
           </div>
         )}
       </Modal>
+
+      {roster && policy && (
+        <RosterModal
+          bookingId={roster.id}
+          courtPrice={roster.price}
+          perHeadPrice={roster.perHeadPrice}
+          policy={policy}
+          onClose={() => setRoster(null)}
+          onChanged={load}
+        />
+      )}
     </Page>
   );
 };

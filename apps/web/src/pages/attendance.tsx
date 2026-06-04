@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { BookingPolicy } from "@vbs/shared";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Page } from "@/shared/ui/page";
@@ -6,6 +7,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useToast } from "@/shared/ui/toast";
 import { fetchDayBookings, markNoShow } from "@/shared/api/staff";
+import { fetchBookingPolicy } from "@/shared/api/bookings";
 import type { DayBooking } from "@/shared/api/staff";
 import { addDays, formatDay, formatTime, isSameDay, toIsoDate } from "@/shared/utils/date";
 
@@ -21,6 +23,7 @@ export const AttendancePage = () => {
   const today = useMemo(() => new Date(), []);
   const [day, setDay] = useState<Date>(today);
   const [bookings, setBookings] = useState<DayBooking[]>([]);
+  const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -38,6 +41,10 @@ export const AttendancePage = () => {
   useEffect(() => {
     void load(day);
   }, [day, load]);
+
+  useEffect(() => {
+    fetchBookingPolicy().then(setPolicy).catch(() => undefined);
+  }, []);
 
   const onNoShow = async (b: DayBooking) => {
     setBusyId(b.id);
@@ -84,7 +91,10 @@ export const AttendancePage = () => {
             <div>
               <p className="text-lg font-semibold">{b.memberName}</p>
               <p className="text-base text-muted">
-                {b.courtName} · {formatTime(b.startAt)}–{formatTime(b.endAt)}
+                {b.courtName} · {formatTime(b.startAt)}–{formatTime(b.endAt)} ·{" "}
+                <span className={policy && b.players < policy.minPlayers ? "text-amber-300" : ""}>
+                  {b.players} giocatori
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-3">

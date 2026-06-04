@@ -50,7 +50,7 @@ export const validateMember = async (params: {
 export const fetchPriceRules = async (): Promise<PriceRule[]> => {
   const { data, error } = await supabase
     .from("price_rules")
-    .select("id, court_id, weekday, start_time, end_time, price")
+    .select("id, court_id, weekday, start_time, end_time, price, per_head_price")
     .order("start_time");
   const rows = unwrap(data, error) ?? [];
   return rows.map((r: Record<string, unknown>) => ({
@@ -59,7 +59,8 @@ export const fetchPriceRules = async (): Promise<PriceRule[]> => {
     weekday: (r.weekday as number) ?? undefined,
     startTime: r.start_time as string,
     endTime: r.end_time as string,
-    price: Number(r.price)
+    price: Number(r.price),
+    perHeadPrice: Number(r.per_head_price ?? 0)
   }));
 };
 
@@ -70,6 +71,32 @@ export const bulkUpdatePrice = async (ids: string[], price: number): Promise<num
     p_price: price
   });
   return unwrap(data, error) as number;
+};
+
+/** Aggiorna in blocco la quota a testa (oltre la soglia) di più fasce. */
+export const bulkUpdatePerHead = async (ids: string[], price: number): Promise<number> => {
+  const { data, error } = await supabase.rpc("bulk_update_per_head", {
+    p_ids: ids,
+    p_price: price
+  });
+  return unwrap(data, error) as number;
+};
+
+// --- Regole giocatori (policy) ----------------------------------------------
+/** Aggiorna minimo giocatori e soglia quota a testa (solo ADMIN via RLS). */
+export const updatePlayerPolicy = async (params: {
+  minPlayers: number;
+  perHeadThreshold: number;
+}): Promise<void> => {
+  const { error } = await supabase
+    .from("booking_policy")
+    .update({
+      min_players: params.minPlayers,
+      per_head_threshold: params.perHeadThreshold
+    })
+    .eq("id", 1);
+  const err = toBusinessError(error);
+  if (err) throw err;
 };
 
 // --- Addebiti ----------------------------------------------------------------
@@ -121,6 +148,7 @@ export type DayBooking = {
   startAt: string;
   endAt: string;
   status: string;
+  players: number;
 };
 
 export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> => {
@@ -129,20 +157,24 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, start_at, end_at, status, members:member_id(full_name), courts:court_id(name)"
+      "id, start_at, end_at, status, members:member_id(full_name), courts:court_id(name), booking_players(count)"
     )
     .gte("start_at", from)
     .lte("start_at", to)
     .order("start_at");
   const rows = unwrap(data, error) ?? [];
-  return rows.map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    startAt: r.start_at as string,
-    endAt: r.end_at as string,
-    status: r.status as string,
-    memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—",
-    courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
-  }));
+  return rows.map((r: Record<string, unknown>) => {
+    const playersRel = r.booking_players as { count?: number }[] | null;
+    return {
+      id: r.id as string,
+      startAt: r.start_at as string,
+      endAt: r.end_at as string,
+      status: r.status as string,
+      players: playersRel?.[0]?.count ?? 0,
+      memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—",
+      courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
+    };
+  });
 };
 
 export const markNoShow = async (bookingId: string): Promise<void> => {

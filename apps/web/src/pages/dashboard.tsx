@@ -106,6 +106,13 @@ export const DashboardPage = () => {
             tone={summary.expiringSoon > 0 ? "warning" : "neutral"}
             hint="Entro 30 giorni"
           />
+          <Stat
+            label="Slot incompleti"
+            value={String(summary.underfilled)}
+            to="/attendance"
+            tone={summary.underfilled > 0 ? "warning" : "neutral"}
+            hint="Sotto il minimo giocatori"
+          />
         </div>
       )}
     </Page>
