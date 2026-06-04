@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/app/app-shell";
 import { BookingsPage } from "@/pages/bookings";
 import { MyBookingsPage } from "@/pages/my-bookings";
+import { DashboardPage } from "@/pages/dashboard";
 import { MembersPage } from "@/pages/members";
 import { SchedulePage } from "@/pages/schedule";
 import { PricingPage } from "@/pages/pricing";
@@ -19,6 +20,14 @@ const AuthenticatedApp = () => (
       <Route path="/" element={<Navigate to="/bookings" replace />} />
       <Route path="/bookings" element={<BookingsPage />} />
       <Route path="/my-bookings" element={<MyBookingsPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <RequireStaff>
+            <DashboardPage />
+          </RequireStaff>
+        }
+      />
       <Route
         path="/members"
         element={

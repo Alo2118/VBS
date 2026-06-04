@@ -48,6 +48,14 @@ progetto Supabase gratuito.
 3. Ricarica l'app: ora vedi le sezioni staff (Soci, Orari, Tariffe, Presenze, Addebiti)
    e puoi prenotare. Gli altri soci che si registrano li validi tu dalla sezione **Soci**.
 
+## Aggiornare un database già configurato
+Se hai già eseguito `setup_all.sql` in passato, per le nuove funzionalità
+(telefono in registrazione, vista settimanale, riepilogo staff) ti basta
+eseguire **solo l'ultima migrazione** nello SQL Editor:
+[`supabase/migrations/20260604000007_enhancements.sql`](supabase/migrations/20260604000007_enhancements.sql).
+È sicura da rieseguire (idempotente). In alternativa puoi reincollare tutto
+`setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.
+
 ## Verifica delle regole (facoltativa, richiede Postgres 16 locale)
 ```bash
 npm run db:test    # applica migrazioni su un Postgres temporaneo ed esegue gli scenari

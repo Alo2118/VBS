@@ -10,29 +10,50 @@ import { useAuth } from "@/shared/auth/auth-context";
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const { profile, isStaff } = useAuth();
   const items = navigationItems.filter((item) => !item.staffOnly || isStaff);
+  const valid = profile?.membershipStatus === "VALID";
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row md:px-6 md:py-8">
-        <aside className="shrink-0 md:w-64">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      {/* Barra superiore (solo mobile): identità app, stato tessera, uscita */}
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 backdrop-blur md:hidden">
+        <div className="min-w-0">
+          <p className="truncate text-lg font-semibold leading-tight">VBS Beach Volley</p>
+          {profile && (
+            <StatusPill
+              label={valid ? "Tessera valida" : "Tessera non valida"}
+              tone={valid ? "success" : "warning"}
+            />
+          )}
+        </div>
+        {profile && (
+          <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+            Esci
+          </Button>
+        )}
+      </header>
+
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row md:px-6 md:py-8">
+        {/* Sidebar (solo desktop) */}
+        <aside className="hidden shrink-0 md:block md:w-64">
+          <div className="sticky top-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <h1 className="text-xl font-semibold">VBS Beach Volley</h1>
             <p className="mt-1 text-sm text-muted">Prenotazione campi</p>
 
-            <nav className="mt-5 flex flex-row flex-wrap gap-2 md:flex-col">
+            <nav className="mt-5 flex flex-col gap-2">
               {items.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
                     cn(
-                      "rounded-lg px-4 py-2.5 text-base font-medium transition",
+                      "flex items-center gap-3 rounded-lg px-4 py-2.5 text-base font-medium transition",
                       isActive
                         ? "bg-accent text-slate-900"
                         : "text-slate-100 hover:bg-slate-800"
                     )
                   }
                 >
+                  <span aria-hidden>{item.icon}</span>
                   {item.label}
                 </NavLink>
               ))}
@@ -40,11 +61,13 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
             {profile && (
               <div className="mt-6 border-t border-slate-800 pt-4">
-                <p className="text-sm font-medium text-slate-100">{profile.fullName || profile.email}</p>
+                <p className="text-sm font-medium text-slate-100">
+                  {profile.fullName || profile.email}
+                </p>
                 <div className="mt-2">
                   <StatusPill
-                    label={profile.membershipStatus === "VALID" ? "Tessera valida" : "Tessera non valida"}
-                    tone={profile.membershipStatus === "VALID" ? "success" : "warning"}
+                    label={valid ? "Tessera valida" : "Tessera non valida"}
+                    tone={valid ? "success" : "warning"}
                   />
                 </div>
                 <Button variant="ghost" className="mt-3 w-full" onClick={() => void signOut()}>
@@ -54,8 +77,31 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             )}
           </div>
         </aside>
-        <main className="flex-1">{children}</main>
+
+        {/* Contenuto: padding inferiore per non finire sotto la barra mobile */}
+        <main className="flex-1 pb-24 md:pb-0">{children}</main>
       </div>
+
+      {/* Barra di navigazione inferiore (solo mobile): target ampi, scrollabile */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-2 py-1.5 backdrop-blur md:hidden">
+        {items.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              cn(
+                "flex min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-xs font-medium transition",
+                isActive ? "bg-accent text-slate-900" : "text-slate-300 hover:bg-slate-800"
+              )
+            }
+          >
+            <span className="text-xl leading-none" aria-hidden>
+              {item.icon}
+            </span>
+            <span className="whitespace-nowrap">{item.shortLabel ?? item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 };

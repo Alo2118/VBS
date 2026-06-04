@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, formatTime, isSameDay, toIsoDate } from "./date";
+import { addDays, formatTime, isSameDay, startOfWeek, toIsoDate, weekDays } from "./date";
 
 describe("toIsoDate", () => {
   it("formatta come YYYY-MM-DD con zero padding", () => {
@@ -25,6 +25,26 @@ describe("isSameDay", () => {
   it("confronta solo la parte data", () => {
     expect(isSameDay(new Date(2026, 5, 8, 9), new Date(2026, 5, 8, 23))).toBe(true);
     expect(isSameDay(new Date(2026, 5, 8), new Date(2026, 5, 9))).toBe(false);
+  });
+});
+
+describe("startOfWeek", () => {
+  it("torna sempre al lunedì della settimana", () => {
+    // 2026-06-08 è un lunedì.
+    expect(toIsoDate(startOfWeek(new Date(2026, 5, 8)))).toBe("2026-06-08");
+    // mercoledì 10 → lunedì 8
+    expect(toIsoDate(startOfWeek(new Date(2026, 5, 10)))).toBe("2026-06-08");
+    // domenica 14 → lunedì 8 (la domenica chiude la settimana ISO)
+    expect(toIsoDate(startOfWeek(new Date(2026, 5, 14)))).toBe("2026-06-08");
+  });
+});
+
+describe("weekDays", () => {
+  it("produce 7 giorni consecutivi da lunedì a domenica", () => {
+    const days = weekDays(startOfWeek(new Date(2026, 5, 10)));
+    expect(days).toHaveLength(7);
+    expect(toIsoDate(days[0])).toBe("2026-06-08");
+    expect(toIsoDate(days[6])).toBe("2026-06-14");
   });
 });
 

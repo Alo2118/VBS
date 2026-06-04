@@ -13,6 +13,7 @@ export const LoginPage = () => {
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -24,7 +25,7 @@ export const LoginPage = () => {
         await signIn(email, password);
         // Il cambio di sessione aggiorna automaticamente lo stato auth.
       } else {
-        await registerMember({ email, password, fullName });
+        await registerMember({ email, password, fullName, phone });
         notify(
           "Registrazione inviata. Lo staff confermerà la tua tessera: poi potrai prenotare.",
           "success"
@@ -64,8 +65,21 @@ export const LoginPage = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            inputMode="email"
             required
           />
+          {mode === "register" && (
+            <Input
+              label="Telefono"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="es. 333 1234567"
+              required
+            />
+          )}
           <Input
             label="Password"
             type="password"

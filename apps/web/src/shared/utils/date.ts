@@ -19,6 +19,17 @@ export const addDays = (date: Date, days: number): Date => {
 export const isSameDay = (a: Date, b: Date): boolean =>
   toIsoDate(a) === toIsoDate(b);
 
+/** Lunedì della settimana che contiene `date` (settimana ISO, inizio lunedì). */
+export const startOfWeek = (date: Date): Date => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const isoDow = (d.getDay() + 6) % 7; // 0 = lunedì … 6 = domenica
+  return addDays(d, -isoDow);
+};
+
+/** I 7 giorni (Date) a partire da `start`. */
+export const weekDays = (start: Date): Date[] =>
+  Array.from({ length: 7 }, (_, i) => addDays(start, i));
+
 const dayFormatter = new Intl.DateTimeFormat("it-IT", {
   weekday: "long",
   day: "numeric",
@@ -41,8 +52,17 @@ const dateTimeFormatter = new Intl.DateTimeFormat("it-IT", {
   timeZone: TIME_ZONE
 });
 
+const weekdayShortFormatter = new Intl.DateTimeFormat("it-IT", {
+  weekday: "short",
+  timeZone: TIME_ZONE
+});
+
 /** "lunedì 8 giugno" */
 export const formatDay = (date: Date): string => dayFormatter.format(date);
+
+/** "lun" — etichetta breve del giorno della settimana. */
+export const formatWeekdayShort = (date: Date): string =>
+  weekdayShortFormatter.format(date).replace(".", "");
 
 /** "18:00" da una stringa ISO. */
 export const formatTime = (iso: string): string =>

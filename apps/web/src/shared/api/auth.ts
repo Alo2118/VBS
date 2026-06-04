@@ -6,11 +6,14 @@ export const registerMember = async (params: {
   email: string;
   password: string;
   fullName: string;
+  phone: string;
 }) => {
   const { error } = await supabase.auth.signUp({
     email: params.email,
     password: params.password,
-    options: { data: { full_name: params.fullName } }
+    // full_name e phone finiscono nei metadati: il trigger handle_new_user
+    // li copia nel profilo socio (members).
+    options: { data: { full_name: params.fullName, phone: params.phone } }
   });
   const err = toBusinessError(error as never);
   if (err) throw err;

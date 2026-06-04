@@ -134,3 +134,18 @@ export interface AvailabilitySlot {
   price: number;
   status: SlotStatus;
 }
+
+/** Slot della vista settimanale: come AvailabilitySlot ma con il giorno (YYYY-MM-DD). */
+export interface WeekSlot extends AvailabilitySlot {
+  day: string;
+}
+
+/** Numeri chiave per il riepilogo dello staff (dashboard). */
+export interface AdminSummary {
+  bookingsToday: number;
+  bookingsUpcoming: number;
+  pendingMembers: number;
+  chargesDueCount: number;
+  chargesDueAmount: number;
+  expiringSoon: number;
+}

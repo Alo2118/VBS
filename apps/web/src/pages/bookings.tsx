@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AvailabilitySlot, BookingPolicy } from "@vbs/shared";
+import type { BookingPolicy, WeekSlot } from "@vbs/shared";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Modal } from "@/shared/ui/modal";
@@ -7,39 +7,51 @@ import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
-import { fetchAvailability } from "@/shared/api/availability";
+import { fetchWeekAvailability } from "@/shared/api/availability";
 import { createBooking, fetchBookingPolicy } from "@/shared/api/bookings";
 import { useAuth } from "@/shared/auth/auth-context";
 import { MembershipBanner } from "@/shared/auth/membership-banner";
-import { addDays, formatDay, formatTime, isSameDay, toIsoDate } from "@/shared/utils/date";
+import {
+  addDays,
+  formatDay,
+  formatTime,
+  formatWeekdayShort,
+  isSameDay,
+  startOfWeek,
+  toIsoDate,
+  weekDays
+} from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
 
 export const BookingsPage = () => {
   const notify = useToast();
   const { canBook } = useAuth();
   const today = useMemo(() => new Date(), []);
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(today));
   const [day, setDay] = useState<Date>(today);
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [slots, setSlots] = useState<WeekSlot[]>([]);
   const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<AvailabilitySlot | null>(null);
+  const [selected, setSelected] = useState<WeekSlot | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  const load = useCallback(async (target: Date) => {
-    setLoading(true);
-    try {
-      const data = await fetchAvailability(toIsoDate(target));
-      setSlots(data);
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [notify]);
+  const load = useCallback(
+    async (start: Date) => {
+      setLoading(true);
+      try {
+        setSlots(await fetchWeekAvailability(toIsoDate(start)));
+      } catch (err) {
+        notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [notify]
+  );
 
   useEffect(() => {
-    void load(day);
-  }, [day, load]);
+    void load(weekStart);
+  }, [weekStart, load]);
 
   useEffect(() => {
     fetchBookingPolicy().then(setPolicy).catch(() => undefined);
@@ -52,7 +64,7 @@ export const BookingsPage = () => {
       await createBooking(selected.courtId, selected.startAt);
       notify("Prenotazione confermata!", "success");
       setSelected(null);
-      await load(day);
+      await load(weekStart);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Prenotazione non riuscita.", "error");
     } finally {
@@ -60,19 +72,39 @@ export const BookingsPage = () => {
     }
   };
 
-  // Raggruppa per campo, mostrando solo gli slot rilevanti (FREE/TAKEN).
-  const byCourt = useMemo(() => {
-    const map = new Map<string, { name: string; slots: AvailabilitySlot[] }>();
+  // Posti liberi per giorno (per i badge della striscia settimanale).
+  const freeByDay = useMemo(() => {
+    const map = new Map<string, number>();
     for (const s of slots) {
-      if (s.status === "UNAVAILABLE") continue; // nasconde passato/chiusure (UX)
+      if (s.status === "FREE") map.set(s.day, (map.get(s.day) ?? 0) + 1);
+    }
+    return map;
+  }, [slots]);
+
+  // Slot del giorno selezionato, raggruppati per campo (nasconde il non disponibile).
+  const byCourt = useMemo(() => {
+    const iso = toIsoDate(day);
+    const map = new Map<string, { name: string; slots: WeekSlot[] }>();
+    for (const s of slots) {
+      if (s.day !== iso || s.status === "UNAVAILABLE") continue;
       const entry = map.get(s.courtId) ?? { name: s.courtName, slots: [] };
       entry.slots.push(s);
       map.set(s.courtId, entry);
     }
     return [...map.values()];
-  }, [slots]);
+  }, [slots, day]);
 
-  const isToday = isSameDay(day, today);
+  const days = useMemo(() => weekDays(weekStart), [weekStart]);
+  const isCurrentWeek = isSameDay(weekStart, startOfWeek(today));
+  const todayIso = toIsoDate(today);
+
+  const goWeek = (delta: number) => {
+    const next = addDays(weekStart, delta * 7);
+    setWeekStart(next);
+    // Porta la selezione sul primo giorno utile della nuova settimana.
+    setDay(isSameDay(next, startOfWeek(today)) ? today : next);
+  };
+
   const cancellationNote =
     policy?.cancellationModel === "ROLLING_HOURS"
       ? `Disdetta gratuita fino a ${policy.cancellationHours} ore prima.`
@@ -82,39 +114,74 @@ export const BookingsPage = () => {
     <Page title="Prenota un campo">
       <MembershipBanner />
 
-      {/* Navigatore giorno (3 passi: giorno → slot → conferma) */}
-      <Card className="flex items-center justify-between gap-4">
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => setDay((d) => addDays(d, -1))}
-          disabled={isToday}
-          aria-label="Giorno precedente"
-        >
-          ‹
-        </Button>
-        <div className="text-center">
-          <p className="text-xl font-semibold capitalize">{formatDay(day)}</p>
-          {!isToday && (
-            <button
-              type="button"
-              className="text-base text-accent hover:underline"
-              onClick={() => setDay(today)}
-            >
-              Torna a oggi
-            </button>
-          )}
+      {/* Passo 1: scegli il giorno nella settimana */}
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => goWeek(-1)}
+            disabled={isCurrentWeek}
+            aria-label="Settimana precedente"
+          >
+            ‹
+          </Button>
+          <p className="text-center text-base font-medium capitalize">
+            {formatDay(days[0])} – {formatDay(days[6])}
+          </p>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => goWeek(1)}
+            aria-label="Settimana successiva"
+          >
+            ›
+          </Button>
         </div>
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => setDay((d) => addDays(d, 1))}
-          aria-label="Giorno successivo"
-        >
-          ›
-        </Button>
+
+        <div className="grid grid-cols-7 gap-1.5">
+          {days.map((d) => {
+            const iso = toIsoDate(d);
+            const isPast = iso < todayIso;
+            const isSelected = iso === toIsoDate(day);
+            const free = freeByDay.get(iso) ?? 0;
+            return (
+              <button
+                key={iso}
+                type="button"
+                disabled={isPast}
+                onClick={() => setDay(d)}
+                aria-label={formatDay(d)}
+                aria-pressed={isSelected}
+                className={cn(
+                  "flex flex-col items-center rounded-xl border px-1 py-2 transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  isSelected
+                    ? "border-accent bg-accent text-slate-900"
+                    : isPast
+                      ? "cursor-not-allowed border-slate-800 bg-slate-900/60 opacity-50"
+                      : "border-slate-700 bg-slate-900/60 hover:bg-slate-800"
+                )}
+              >
+                <span className="text-xs font-medium capitalize">{formatWeekdayShort(d)}</span>
+                <span className="text-lg font-semibold leading-tight">{d.getDate()}</span>
+                {!isPast && (
+                  <span
+                    className={cn(
+                      "mt-0.5 text-[0.7rem] font-medium",
+                      isSelected ? "text-slate-900/80" : free > 0 ? "text-emerald-400" : "text-slate-500"
+                    )}
+                  >
+                    {free > 0 ? `${free} liberi` : "—"}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </Card>
 
+      {/* Passo 2: scegli lo slot */}
       {loading ? (
         <Spinner label="Carico la disponibilità…" />
       ) : byCourt.length === 0 ? (
