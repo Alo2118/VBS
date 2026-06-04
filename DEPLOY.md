@@ -55,6 +55,10 @@ esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applic
   (telefono in registrazione, vista settimanale, riepilogo staff)
 - [`supabase/migrations/20260604000008_roster_recurring.sql`](supabase/migrations/20260604000008_roster_recurring.sql)
   (campi Giallo/Bianco/Verde, rosa giocatori, costo diviso, prenotazioni fisse)
+- [`supabase/migrations/20260604000009_branding_nickname.sql`](supabase/migrations/20260604000009_branding_nickname.sql)
+  (soprannome socio per distinguere gli omonimi)
+- [`supabase/migrations/20260604000010_staff_corrections.sql`](supabase/migrations/20260604000010_staff_corrections.sql)
+  (annulla no-show, libera campo con/senza penale)
 
 Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.

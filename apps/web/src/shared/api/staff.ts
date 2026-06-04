@@ -154,6 +154,7 @@ export type DayBooking = {
   startAt: string;
   endAt: string;
   status: string;
+  price: number;
   players: number;
 };
 
@@ -163,7 +164,7 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, start_at, end_at, status, members:member_id(full_name, nickname), courts:court_id(name), booking_players(count)"
+      "id, start_at, end_at, status, price, members:member_id(full_name, nickname), courts:court_id(name), booking_players(count)"
     )
     .gte("start_at", from)
     .lte("start_at", to)
@@ -177,6 +178,7 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
       startAt: r.start_at as string,
       endAt: r.end_at as string,
       status: r.status as string,
+      price: Number(r.price ?? 0),
       players: playersRel?.[0]?.count ?? 0,
       memberName: member?.full_name ?? "—",
       memberNickname: member?.nickname ?? undefined,
@@ -187,6 +189,26 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
 
 export const markNoShow = async (bookingId: string): Promise<void> => {
   const { error } = await supabase.rpc("mark_no_show", { p_booking_id: bookingId });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
+/** Annulla una mancata presentazione segnata per errore (rimuove l'addebito). */
+export const undoNoShow = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase.rpc("undo_no_show", { p_booking_id: bookingId });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
+/** Libera un campo (disdetta gestita dallo staff), con o senza penale. */
+export const staffCancelBooking = async (
+  bookingId: string,
+  charge: boolean
+): Promise<void> => {
+  const { error } = await supabase.rpc("staff_cancel_booking", {
+    p_booking_id: bookingId,
+    p_charge: charge
+  });
   const err = toBusinessError(error);
   if (err) throw err;
 };

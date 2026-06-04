@@ -291,4 +291,56 @@ begin
   raise notice 'TEST 14 OK: ricerca soci validi (% trovati)', v_n;
 end $$;
 
+-- 15) Annulla no-show: torna CONFERMATA e rimuove l'addebito
+do $$
+declare v_court uuid; v_start timestamptz; v_b bookings%rowtype; v_n int; v_status booking_status;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name limit 1;
+  v_start := ((current_date + 7)::timestamp + time '11:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  -- lo staff segna no-show, poi lo annulla
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  perform mark_no_show(v_b.id);
+  select count(*) into v_n from charges where booking_id = v_b.id and type = 'NO_SHOW';
+  if v_n <> 1 then raise exception 'TEST 15 FALLITO: addebito no-show mancante'; end if;
+  perform undo_no_show(v_b.id);
+  select status into v_status from bookings where id = v_b.id;
+  select count(*) into v_n from charges where booking_id = v_b.id and type = 'NO_SHOW' and status = 'DUE';
+  if v_status <> 'CONFIRMED' or v_n <> 0 then
+    raise exception 'TEST 15 FALLITO: stato % / addebiti dovuti %', v_status, v_n;
+  end if;
+  raise notice 'TEST 15 OK: no-show annullato, addebito rimosso';
+end $$;
+
+-- 16) Libera campo (staff): senza penale libera lo slot; con penale addebita
+do $$
+declare v_court uuid; v_start timestamptz; v_b1 bookings%rowtype; v_b2 bookings%rowtype; v_amount numeric;
+begin
+  select id into v_court from courts order by name desc limit 1; -- 'Verde'
+  v_start := ((current_date + 8)::timestamp + time '12:00') at time zone 'Europe/Rome';
+  -- senza penale
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select * into v_b1 from create_booking(v_court, v_start);
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  perform staff_cancel_booking(v_b1.id, false);
+  if (select status from bookings where id = v_b1.id) <> 'CANCELLED' then
+    raise exception 'TEST 16 FALLITO: campo non liberato';
+  end if;
+  if exists (select 1 from charges where booking_id = v_b1.id) then
+    raise exception 'TEST 16 FALLITO: addebito generato senza penale';
+  end if;
+  -- lo slot è di nuovo prenotabile (anti-overbooking lo consente)
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select * into v_b2 from create_booking(v_court, v_start);
+  -- con penale
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  perform staff_cancel_booking(v_b2.id, true);
+  select amount into v_amount from charges where booking_id = v_b2.id and type = 'LATE_CANCELLATION';
+  if v_amount is null or v_amount <> v_b2.price then
+    raise exception 'TEST 16 FALLITO: penale attesa %, ottenuta %', v_b2.price, v_amount;
+  end if;
+  raise notice 'TEST 16 OK: libera campo senza/con penale, slot riprenotabile';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
