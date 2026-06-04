@@ -3,6 +3,7 @@ import { AppShell } from "@/app/app-shell";
 import { BookingsPage } from "@/pages/bookings";
 import { MyBookingsPage } from "@/pages/my-bookings";
 import { MembersPage } from "@/pages/members";
+import { SchedulePage } from "@/pages/schedule";
 import { PricingPage } from "@/pages/pricing";
 import { AttendancePage } from "@/pages/attendance";
 import { ChargesPage } from "@/pages/charges";
@@ -23,6 +24,14 @@ const AuthenticatedApp = () => (
         element={
           <RequireStaff>
             <MembersPage />
+          </RequireStaff>
+        }
+      />
+      <Route
+        path="/schedule"
+        element={
+          <RequireStaff>
+            <SchedulePage />
           </RequireStaff>
         }
       />
