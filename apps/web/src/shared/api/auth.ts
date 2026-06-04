@@ -7,13 +7,20 @@ export const registerMember = async (params: {
   password: string;
   fullName: string;
   phone: string;
+  nickname: string;
 }) => {
   const { error } = await supabase.auth.signUp({
     email: params.email,
     password: params.password,
-    // full_name e phone finiscono nei metadati: il trigger handle_new_user
-    // li copia nel profilo socio (members).
-    options: { data: { full_name: params.fullName, phone: params.phone } }
+    // full_name, phone e nickname finiscono nei metadati: il trigger
+    // handle_new_user li copia nel profilo socio (members).
+    options: {
+      data: {
+        full_name: params.fullName,
+        phone: params.phone,
+        nickname: params.nickname
+      }
+    }
   });
   const err = toBusinessError(error as never);
   if (err) throw err;
@@ -36,7 +43,7 @@ export const fetchMyProfile = async (): Promise<MemberProfile | null> => {
   const { data, error } = await supabase
     .from("members")
     .select(
-      "id, full_name, email, phone, role, membership_status, membership_start_date, membership_end_date, aics_number"
+      "id, full_name, nickname, email, phone, role, membership_status, membership_start_date, membership_end_date, aics_number"
     )
     .eq("id", auth.user.id)
     .single();
@@ -46,6 +53,7 @@ export const fetchMyProfile = async (): Promise<MemberProfile | null> => {
   return {
     id: data!.id,
     fullName: data!.full_name,
+    nickname: data!.nickname ?? undefined,
     email: data!.email ?? undefined,
     phone: data!.phone ?? undefined,
     role: data!.role,

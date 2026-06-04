@@ -12,7 +12,7 @@ export const fetchMembers = async (): Promise<MemberProfile[]> => {
   const { data, error } = await supabase
     .from("members")
     .select(
-      "id, full_name, email, phone, role, membership_status, membership_start_date, membership_end_date, aics_number"
+      "id, full_name, nickname, email, phone, role, membership_status, membership_start_date, membership_end_date, aics_number"
     )
     .order("membership_status")
     .order("full_name");
@@ -20,6 +20,7 @@ export const fetchMembers = async (): Promise<MemberProfile[]> => {
   return rows.map((r: Record<string, unknown>) => ({
     id: r.id as string,
     fullName: r.full_name as string,
+    nickname: (r.nickname as string) ?? undefined,
     email: (r.email as string) ?? undefined,
     phone: (r.phone as string) ?? undefined,
     role: r.role as MemberProfile["role"],
@@ -100,29 +101,33 @@ export const updatePlayerPolicy = async (params: {
 };
 
 // --- Addebiti ----------------------------------------------------------------
-export type ChargeRow = Charge & { memberName: string };
+export type ChargeRow = Charge & { memberName: string; memberNickname?: string };
 
 export const fetchCharges = async (): Promise<ChargeRow[]> => {
   const { data, error } = await supabase
     .from("charges")
     .select(
-      "id, booking_id, member_id, type, amount, status, reason, created_at, settled_at, settled_by, members:member_id(full_name)"
+      "id, booking_id, member_id, type, amount, status, reason, created_at, settled_at, settled_by, members:member_id(full_name, nickname)"
     )
     .order("created_at", { ascending: false });
   const rows = unwrap(data, error) ?? [];
-  return rows.map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    bookingId: r.booking_id as string,
-    memberId: r.member_id as string,
-    type: r.type as Charge["type"],
-    amount: Number(r.amount),
-    status: r.status as Charge["status"],
-    reason: (r.reason as string) ?? undefined,
-    createdAt: r.created_at as string,
-    settledAt: (r.settled_at as string) ?? undefined,
-    settledBy: (r.settled_by as string) ?? undefined,
-    memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—"
-  }));
+  return rows.map((r: Record<string, unknown>) => {
+    const member = r.members as { full_name?: string; nickname?: string } | null;
+    return {
+      id: r.id as string,
+      bookingId: r.booking_id as string,
+      memberId: r.member_id as string,
+      type: r.type as Charge["type"],
+      amount: Number(r.amount),
+      status: r.status as Charge["status"],
+      reason: (r.reason as string) ?? undefined,
+      createdAt: r.created_at as string,
+      settledAt: (r.settled_at as string) ?? undefined,
+      settledBy: (r.settled_by as string) ?? undefined,
+      memberName: member?.full_name ?? "—",
+      memberNickname: member?.nickname ?? undefined
+    };
+  });
 };
 
 export const settleCharge = async (chargeId: string): Promise<void> => {
@@ -145,6 +150,7 @@ export type DayBooking = {
   id: string;
   courtName: string;
   memberName: string;
+  memberNickname?: string;
   startAt: string;
   endAt: string;
   status: string;
@@ -157,7 +163,7 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, start_at, end_at, status, members:member_id(full_name), courts:court_id(name), booking_players(count)"
+      "id, start_at, end_at, status, members:member_id(full_name, nickname), courts:court_id(name), booking_players(count)"
     )
     .gte("start_at", from)
     .lte("start_at", to)
@@ -165,13 +171,15 @@ export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> =
   const rows = unwrap(data, error) ?? [];
   return rows.map((r: Record<string, unknown>) => {
     const playersRel = r.booking_players as { count?: number }[] | null;
+    const member = r.members as { full_name?: string; nickname?: string } | null;
     return {
       id: r.id as string,
       startAt: r.start_at as string,
       endAt: r.end_at as string,
       status: r.status as string,
       players: playersRel?.[0]?.count ?? 0,
-      memberName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—",
+      memberName: member?.full_name ?? "—",
+      memberNickname: member?.nickname ?? undefined,
       courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
     };
   });

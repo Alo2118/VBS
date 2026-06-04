@@ -1,7 +1,11 @@
-# VBS — Prenotazione Campi Beach Volley
+# Vicenza Beach Summer — Prenotazione Campi Beach Volley
 
-App per la gestione delle prenotazioni di 3 campi da beach volley di un'associazione
-sportiva. Vedi `PRD.md` (documento di sviluppo) e `DEV_BEST_PRACTICE.md` (regole di codifica).
+App per la gestione delle prenotazioni dei campi da beach volley dell'associazione
+**Vicenza Beach Summer**. Vedi `PRD.md` (documento di sviluppo) e
+`DEV_BEST_PRACTICE.md` (regole di codifica).
+
+> **Proprietà e licenza** — App sviluppata ed è proprietà di **Alo**.
+> Tutti i diritti riservati. © Vicenza Beach Summer.
 
 ## Architettura (vedi PRD §9)
 - **Frontend**: PWA React + Vite + Tailwind (`apps/web`) — webapp con link **e** app installabile.

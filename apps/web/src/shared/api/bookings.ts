@@ -102,15 +102,17 @@ export const cancelBooking = async (bookingId: string): Promise<Booking> => {
 export const fetchPlayers = async (bookingId: string): Promise<BookingPlayer[]> => {
   const { data, error } = await supabase
     .from("booking_players")
-    .select("member_id, members:member_id(full_name), bookings:booking_id(member_id)")
+    .select("member_id, members:member_id(full_name, nickname), bookings:booking_id(member_id)")
     .eq("booking_id", bookingId);
   const err = toBusinessError(error);
   if (err) throw err;
   return (data ?? []).map((r: Record<string, unknown>) => {
     const booker = (r.bookings as { member_id?: string } | null)?.member_id;
+    const member = r.members as { full_name?: string; nickname?: string } | null;
     return {
       memberId: r.member_id as string,
-      fullName: ((r.members as { full_name?: string } | null)?.full_name) ?? "—",
+      fullName: member?.full_name ?? "—",
+      nickname: member?.nickname ?? undefined,
       isBooker: r.member_id === booker
     };
   });
@@ -141,7 +143,8 @@ export const searchValidMembers = async (query: string): Promise<MemberLite[]> =
   if (err) throw err;
   return (data ?? []).map((r: Record<string, unknown>) => ({
     id: r.id as string,
-    fullName: r.full_name as string
+    fullName: r.full_name as string,
+    nickname: (r.nickname as string) ?? undefined
   }));
 };
 

@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { BrandFooter, BrandMark } from "@/shared/ui/brand";
 import { useToast } from "@/shared/ui/toast";
 import { registerMember, signIn } from "@/shared/api/auth";
 
@@ -12,6 +13,7 @@ export const LoginPage = () => {
   const notify = useToast();
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +27,7 @@ export const LoginPage = () => {
         await signIn(email, password);
         // Il cambio di sessione aggiorna automaticamente lo stato auth.
       } else {
-        await registerMember({ email, password, fullName, phone });
+        await registerMember({ email, password, fullName, phone, nickname });
         notify(
           "Registrazione inviata. Lo staff confermerà la tua tessera: poi potrai prenotare.",
           "success"
@@ -40,16 +42,22 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold">VBS — Campi Beach Volley</h1>
-        <p className="mt-2 text-base text-muted">
-          {mode === "login"
-            ? "Accedi per prenotare i campi."
-            : "Crea il tuo account socio."}
-        </p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-4">
+      <Card className="w-full max-w-md overflow-hidden p-0">
+        <div className="bg-brand-gradient px-6 py-7">
+          <BrandMark size="lg" />
+        </div>
+        <div className="p-6">
+          <h1 className="text-xl font-semibold">
+            {mode === "login" ? "Accedi" : "Crea il tuo account socio"}
+          </h1>
+          <p className="mt-1 text-base text-muted">
+            {mode === "login"
+              ? "Entra per prenotare i campi."
+              : "Lo staff confermerà la tessera prima di poter prenotare."}
+          </p>
 
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
           {mode === "register" && (
             <Input
               label="Nome e cognome"
@@ -57,6 +65,15 @@ export const LoginPage = () => {
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
               required
+            />
+          )}
+          {mode === "register" && (
+            <Input
+              label="Soprannome"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="es. «Cobra» — utile in caso di omonimia"
+              autoComplete="nickname"
             />
           )}
           <Input
@@ -117,8 +134,10 @@ export const LoginPage = () => {
               Hai già un account? Accedi
             </button>
           )}
+          </div>
         </div>
       </Card>
+      <BrandFooter className="mt-2 max-w-md" />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Modal } from "@/shared/ui/modal";
 import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { useAuth } from "@/shared/auth/auth-context";
 import { fetchCharges, settleCharge, waiveCharge } from "@/shared/api/staff";
@@ -90,7 +91,10 @@ export const ChargesPage = () => {
         charges.map((c) => (
           <Card key={c.id} className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-lg font-semibold">{c.memberName}</p>
+              <p className="text-lg font-semibold">
+                {c.memberName}
+                <NicknameTag nickname={c.memberNickname} className="ml-2" />
+              </p>
               <p className="text-base text-muted capitalize">
                 {typeLabel[c.type]} · {formatDateTime(c.createdAt)}
               </p>

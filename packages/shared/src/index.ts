@@ -41,6 +41,8 @@ export type BusinessErrorCode =
 export interface MemberProfile {
   id: string;
   fullName: string;
+  /** Soprannome per distinguere soci omonimi senza esporre altri dati. */
+  nickname?: string;
   email?: string;
   phone?: string;
   role: Role;
@@ -112,6 +114,7 @@ export interface Booking {
 export interface BookingPlayer {
   memberId: string;
   fullName: string;
+  nickname?: string;
   isBooker: boolean;
 }
 
@@ -119,6 +122,8 @@ export interface BookingPlayer {
 export interface MemberLite {
   id: string;
   fullName: string;
+  /** Soprannome, mostrato per distinguere gli omonimi. */
+  nickname?: string;
 }
 
 export interface Charge {

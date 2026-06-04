@@ -8,6 +8,7 @@ import { Modal } from "@/shared/ui/modal";
 import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { fetchMembers, validateMember } from "@/shared/api/staff";
 import { toIsoDate } from "@/shared/utils/date";
@@ -83,7 +84,10 @@ export const MembersPage = () => {
         members.map((m) => (
           <Card key={m.id} className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-lg font-semibold">{m.fullName || m.email}</p>
+              <p className="text-lg font-semibold">
+                {m.fullName || m.email}
+                <NicknameTag nickname={m.nickname} className="ml-2" />
+              </p>
               <p className="text-base text-muted">
                 {m.email}
                 {m.aicsNumber ? ` · Tessera ${m.aicsNumber}` : ""}

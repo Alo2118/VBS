@@ -5,6 +5,7 @@ import { Card } from "@/shared/ui/card";
 import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { fetchDayBookings, markNoShow } from "@/shared/api/staff";
 import { fetchBookingPolicy } from "@/shared/api/bookings";
@@ -89,7 +90,10 @@ export const AttendancePage = () => {
         bookings.map((b) => (
           <Card key={b.id} className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-lg font-semibold">{b.memberName}</p>
+              <p className="text-lg font-semibold">
+                {b.memberName}
+                <NicknameTag nickname={b.memberNickname} className="ml-2" />
+              </p>
               <p className="text-base text-muted">
                 {b.courtName} · {formatTime(b.startAt)}–{formatTime(b.endAt)} ·{" "}
                 <span className={policy && b.players < policy.minPlayers ? "text-amber-300" : ""}>

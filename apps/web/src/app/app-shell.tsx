@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { navigationItems } from "@/shared/config/navigation";
 import { cn } from "@/shared/ui/cn";
 import { Button } from "@/shared/ui/button";
+import { BrandFooter, BrandMark } from "@/shared/ui/brand";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { signOut } from "@/shared/api/auth";
 import { useAuth } from "@/shared/auth/auth-context";
@@ -16,28 +17,27 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen bg-slate-950">
       {/* Barra superiore (solo mobile): identità app, stato tessera, uscita */}
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 backdrop-blur md:hidden">
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold leading-tight">VBS Beach Volley</p>
+        <BrandMark size="md" className="min-w-0" />
+        <div className="flex shrink-0 items-center gap-2">
           {profile && (
             <StatusPill
               label={valid ? "Tessera valida" : "Tessera non valida"}
               tone={valid ? "success" : "warning"}
             />
           )}
+          {profile && (
+            <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+              Esci
+            </Button>
+          )}
         </div>
-        {profile && (
-          <Button variant="secondary" size="sm" onClick={() => void signOut()}>
-            Esci
-          </Button>
-        )}
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row md:px-6 md:py-8">
         {/* Sidebar (solo desktop) */}
         <aside className="hidden shrink-0 md:block md:w-64">
           <div className="sticky top-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <h1 className="text-xl font-semibold">VBS Beach Volley</h1>
-            <p className="mt-1 text-sm text-muted">Prenotazione campi</p>
+            <BrandMark size="md" />
 
             <nav className="mt-5 flex flex-col gap-2">
               {items.map((item) => (
@@ -79,7 +79,10 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </aside>
 
         {/* Contenuto: padding inferiore per non finire sotto la barra mobile */}
-        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+        <main className="flex-1 pb-24 md:pb-0">
+          {children}
+          <BrandFooter className="mt-8" />
+        </main>
       </div>
 
       {/* Barra di navigazione inferiore (solo mobile): target ampi, scrollabile */}

@@ -4,6 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Modal } from "@/shared/ui/modal";
 import { Spinner } from "@/shared/ui/spinner";
+import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import {
   addPlayer,
@@ -149,6 +150,7 @@ export const RosterModal = ({
               >
                 <span className="text-base">
                   {p.fullName}
+                  <NicknameTag nickname={p.nickname} className="ml-1" />
                   {p.isBooker && <span className="ml-2 text-sm text-muted">(capogruppo)</span>}
                 </span>
                 {!p.isBooker && (
@@ -187,7 +189,10 @@ export const RosterModal = ({
                         disabled={busy}
                         className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-left text-base hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
-                        {m.fullName}
+                        <span>
+                          {m.fullName}
+                          <NicknameTag nickname={m.nickname} className="ml-1" />
+                        </span>
                         <span aria-hidden className="text-accent">
                           +
                         </span>

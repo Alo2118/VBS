@@ -16,9 +16,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "VBS — Prenotazione Campi Beach Volley",
-        short_name: "VBS Beach",
-        description: "Prenota i campi da beach volley del tuo circolo.",
+        name: "Vicenza Beach Summer — Prenotazione Campi",
+        short_name: "Beach Summer",
+        description: "Vicenza Beach Summer — prenota i campi da beach volley dell'associazione.",
         lang: "it",
         id: base,
         start_url: base,
