@@ -49,11 +49,13 @@ export const MyBookingsPage = () => {
     fetchBookingPolicy().then(setPolicy).catch(() => undefined);
   }, []);
 
-  // Disdetta tardiva (penale) — gratuita se avviene lo stesso giorno della
-  // prenotazione, in linea con la regola lato DB.
+  // Disdetta tardiva (penale): gratuita entro il termine OPPURE entro la
+  // finestra di tolleranza dalla prenotazione, in linea con la regola DB.
   const isLate = (b: Booking) => {
     if (new Date() <= new Date(b.freeCancellationDeadline)) return false;
-    return new Date(b.createdAt).toDateString() !== new Date().toDateString();
+    const grace = policy?.cancellationGraceMinutes ?? 0;
+    const graceEnd = new Date(b.createdAt).getTime() + grace * 60_000;
+    return Date.now() > graceEnd;
   };
 
   const onCancel = async () => {
@@ -170,7 +172,7 @@ export const MyBookingsPage = () => {
             ) : (
               <p className="text-base text-emerald-300">
                 {new Date() > new Date(target.freeCancellationDeadline)
-                  ? "La disdetta è gratuita perché prenotata oggi."
+                  ? "La disdetta è gratuita perché hai prenotato da poco."
                   : "La disdetta è gratuita: sei entro i termini."}
               </p>
             )}

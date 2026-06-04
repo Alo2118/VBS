@@ -28,6 +28,7 @@ export const PricingPage = () => {
   const [newPerHead, setNewPerHead] = useState("");
   const [minPlayers, setMinPlayers] = useState("");
   const [threshold, setThreshold] = useState("");
+  const [grace, setGrace] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -38,6 +39,7 @@ export const PricingPage = () => {
       setPolicy(p);
       setMinPlayers(String(p.minPlayers));
       setThreshold(String(p.perHeadThreshold));
+      setGrace(String(p.cancellationGraceMinutes));
     } catch (err) {
       notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
     } finally {
@@ -89,14 +91,23 @@ export const PricingPage = () => {
   const savePolicy = async () => {
     const min = Number(minPlayers);
     const thr = Number(threshold);
-    if (!Number.isInteger(min) || min < 1 || !Number.isInteger(thr) || thr < 1) {
+    const grc = Number(grace);
+    if (
+      !Number.isInteger(min) || min < 1 ||
+      !Number.isInteger(thr) || thr < 1 ||
+      !Number.isInteger(grc) || grc < 0
+    ) {
       notify("Valori non validi.", "error");
       return;
     }
     setBusy(true);
     try {
-      await updatePlayerPolicy({ minPlayers: min, perHeadThreshold: thr });
-      notify("Regole giocatori aggiornate.", "success");
+      await updatePlayerPolicy({
+        minPlayers: min,
+        perHeadThreshold: thr,
+        cancellationGraceMinutes: grc
+      });
+      notify("Regole aggiornate.", "success");
       await load();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Salvataggio non riuscito.", "error");
@@ -227,10 +238,23 @@ export const PricingPage = () => {
                   onChange={(e) => setThreshold(e.target.value)}
                 />
               </div>
+              <div className="w-56">
+                <Input
+                  label="Tolleranza disdetta (min)"
+                  type="number"
+                  min={0}
+                  value={grace}
+                  onChange={(e) => setGrace(e.target.value)}
+                />
+              </div>
               <Button size="lg" onClick={savePolicy} disabled={busy}>
                 Salva regole
               </Button>
             </div>
+            <p className="text-sm text-muted">
+              «Tolleranza disdetta»: minuti dopo la prenotazione entro cui la disdetta resta
+              gratuita anche oltre il termine (evita la penale a chi prenota e disdice subito).
+            </p>
           </Card>
         </>
       )}

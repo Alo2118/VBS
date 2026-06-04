@@ -84,16 +84,18 @@ export const bulkUpdatePerHead = async (ids: string[], price: number): Promise<n
 };
 
 // --- Regole giocatori (policy) ----------------------------------------------
-/** Aggiorna minimo giocatori e soglia quota a testa (solo ADMIN via RLS). */
+/** Aggiorna le regole modificabili dallo staff (solo ADMIN via RLS). */
 export const updatePlayerPolicy = async (params: {
   minPlayers: number;
   perHeadThreshold: number;
+  cancellationGraceMinutes: number;
 }): Promise<void> => {
   const { error } = await supabase
     .from("booking_policy")
     .update({
       min_players: params.minPlayers,
-      per_head_threshold: params.perHeadThreshold
+      per_head_threshold: params.perHeadThreshold,
+      cancellation_grace_minutes: params.cancellationGraceMinutes
     })
     .eq("id", 1);
   const err = toBusinessError(error);

@@ -275,9 +275,11 @@ export const BookingsPage = () => {
               valida). Aggiungi i giocatori dopo, da «Le mie prenotazioni».
             </p>
             <p className="text-sm text-muted">
-              {cancellationNote} Le prenotazioni fatte in giornata restano disdicibili
-              gratuitamente entro la stessa giornata; dopo, in caso di mancata disdetta è dovuto
-              il prezzo del campo.
+              {cancellationNote}
+              {policy && policy.cancellationGraceMinutes > 0
+                ? ` Hai comunque ${policy.cancellationGraceMinutes} minuti dalla prenotazione per disdire gratis.`
+                : ""}{" "}
+              Dopo, in caso di mancata disdetta è dovuto il prezzo del campo.
             </p>
 
             {/* Prenotazione fissa (solo staff) */}

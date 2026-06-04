@@ -346,22 +346,37 @@ begin
   raise notice 'TEST 16 OK: libera campo senza/con penale, slot riprenotabile';
 end $$;
 
--- 17) Disdetta in giornata (stesso giorno della prenotazione) -> gratuita
+-- 17) Finestra di tolleranza: entro = gratuita, oltre = addebito
 do $$
 declare v_court uuid; v_start timestamptz; v_b bookings%rowtype; v_n int;
 begin
   perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
   select id into v_court from courts order by name desc limit 1; -- 'Verde'
+
+  -- (a) prenotata ORA, termine già scaduto -> entro tolleranza -> gratuita
   v_start := ((current_date + 9)::timestamp + time '13:00') at time zone 'Europe/Rome';
   select * into v_b from create_booking(v_court, v_start);
-  -- termine già scaduto (prenotazione "in giornata") ma created_at = oggi
   update bookings set free_cancellation_deadline = now() - interval '1 hour' where id = v_b.id;
   perform cancel_booking(v_b.id);
   select count(*) into v_n from charges where booking_id = v_b.id;
   if v_n <> 0 then
-    raise exception 'TEST 17 FALLITO: addebito su disdetta in giornata (%)', v_n;
+    raise exception 'TEST 17a FALLITO: addebito entro la tolleranza (%)', v_n;
   end if;
-  raise notice 'TEST 17 OK: disdetta in giornata gratuita, nessun addebito';
+
+  -- (b) prenotata 3 ore fa (oltre i 120') e termine scaduto -> addebito
+  v_start := ((current_date + 9)::timestamp + time '15:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  update bookings
+     set free_cancellation_deadline = now() - interval '1 hour',
+         created_at = now() - interval '3 hours'
+   where id = v_b.id;
+  perform cancel_booking(v_b.id);
+  select count(*) into v_n from charges where booking_id = v_b.id and type = 'LATE_CANCELLATION';
+  if v_n <> 1 then
+    raise exception 'TEST 17b FALLITO: penale attesa oltre la tolleranza (%)', v_n;
+  end if;
+
+  raise notice 'TEST 17 OK: tolleranza disdetta (entro gratis, oltre con penale)';
 end $$;
 
 select 'TUTTI I TEST SUPERATI' as risultato;

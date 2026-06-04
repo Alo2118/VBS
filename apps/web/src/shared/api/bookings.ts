@@ -40,7 +40,7 @@ export const fetchBookingPolicy = async (): Promise<BookingPolicy> => {
   const { data, error } = await supabase
     .from("booking_policy")
     .select(
-      "cancellation_model, cancellation_hours, max_advance_days, slot_duration_minutes, max_active_bookings_per_member, timezone, min_players, per_head_threshold"
+      "cancellation_model, cancellation_hours, max_advance_days, slot_duration_minutes, max_active_bookings_per_member, timezone, min_players, per_head_threshold, cancellation_grace_minutes"
     )
     .eq("id", 1)
     .single();
@@ -54,7 +54,8 @@ export const fetchBookingPolicy = async (): Promise<BookingPolicy> => {
     maxActiveBookingsPerMember: data!.max_active_bookings_per_member,
     timezone: data!.timezone,
     minPlayers: data!.min_players,
-    perHeadThreshold: data!.per_head_threshold
+    perHeadThreshold: data!.per_head_threshold,
+    cancellationGraceMinutes: data!.cancellation_grace_minutes
   };
 };
 

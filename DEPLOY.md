@@ -60,7 +60,9 @@ esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applic
 - [`supabase/migrations/20260604000010_staff_corrections.sql`](supabase/migrations/20260604000010_staff_corrections.sql)
   (annulla no-show, libera campo con/senza penale)
 - [`supabase/migrations/20260604000011_same_day_free_cancel.sql`](supabase/migrations/20260604000011_same_day_free_cancel.sql)
-  (disdetta gratuita se fatta lo stesso giorno della prenotazione)
+  (disdetta gratuita in giornata — sostituita dalla 012)
+- [`supabase/migrations/20260604000012_cancellation_grace.sql`](supabase/migrations/20260604000012_cancellation_grace.sql)
+  (finestra di tolleranza disdetta dalla prenotazione, configurabile)
 
 Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.

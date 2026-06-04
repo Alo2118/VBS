@@ -150,6 +150,8 @@ export interface BookingPolicy {
   minPlayers: number;
   /** Oltre questo numero di giocatori si passa alla quota fissa a testa. */
   perHeadThreshold: number;
+  /** Minuti dopo la prenotazione entro cui la disdetta resta gratuita. */
+  cancellationGraceMinutes: number;
 }
 
 export type SlotStatus = "FREE" | "TAKEN" | "UNAVAILABLE";
