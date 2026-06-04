@@ -236,24 +236,48 @@ Formato errori uniforme `{ code, message, details? }` con codici business: `MEMB
 | PUT    | `/admin/booking-policy`          | Admin            | Aggiorna policy |
 | CRUD   | `/members`                       | Front desk+      | Gestione soci/tessere |
 
-Lo scheletro attuale (`apps/api/src/routes/bookings.ts`) implementa già `GET /bookings/policy` e uno stub
-`POST /bookings`: vanno estesi con la logica reale e le rotte sopra.
+Con l'architettura scelta (§9) queste rotte **non sono un server Node separato**: si realizzano come
+**tabelle + RLS + Postgres/Edge Functions su Supabase**, invocate dal client Supabase nel frontend. La
+tabella resta un contratto logico delle operazioni e dei permessi (chi può fare cosa).
 
 ---
 
-## 9) Architettura e stack
+## 9) Architettura e stack (deciso: PWA + Supabase, costo 0)
 
-Aderente al monorepo esistente e a `DEV_BEST_PRACTICE.md`:
+Vincolo committente: **nessun budget**, **nessun server da gestire**, dati **condivisi** tra i soci,
+UI fruibile come app dagli over 50. Decisione presa: **PWA servita da hosting statico gratuito** +
+**Supabase (PostgreSQL gestito)** come backend/dati. Niente SQLite (database locale escluso: i dati
+devono essere condivisi e centralizzati). Il backend Fastify dello skeleton **viene dismesso**: le regole
+di business risiedono nel database (vincoli + funzioni) e nelle Edge Functions, non in un server Node da
+ospitare (che su free tier "si addormenta", penalizzando proprio gli over 50).
 
-- **Backend**: Fastify (TS) — unica fonte di verità delle regole. Moduli per dominio
-  (`bookings/`, `members/`, `charges/`, `config/`). Validazione schema, RBAC, audit log, transazioni.
-- **Frontend**: React + Vite + Tailwind. Componenti UI centralizzati (`shared/ui`), layout unico
-  (`AppShell`/`Page`), API client unico (`shared/api/client.ts`), niente regole business nel FE.
-- **Shared**: tipi/DTO condivisi in `packages/shared` (estendere con `Court`, `Booking`, `Charge`, ecc.).
-- **Persistenza**: introdurre un DB relazionale (es. SQLite in dev → Postgres in prod) con migrazioni.
-  *(Da confermare — vedi §13.)*
-- **Config**: variabili già previste in `apps/api/.env.example` (`BOOKING_CANCELLATION_HOURS`,
-  `BOOKING_MAX_ADVANCE_DAYS`, `BOOKING_SLOT_DURATION_MINUTES`, notifiche, CORS).
+- **Frontend (PWA)**: React + Vite + Tailwind (skeleton esistente) configurato come **Progressive Web App**
+  (manifest + service worker): un unico prodotto che è sia **webapp con link di accesso** sia **app
+  installabile** con icona in home e apertura a schermo intero. Componenti UI centralizzati (`shared/ui`),
+  layout unico (`AppShell`/`Page`), client dati unico (vedi sotto), niente regole business nel FE.
+- **Backend/Dati = Supabase** (unica fonte di verità):
+  - **PostgreSQL**: anti-overbooking garantito da **vincolo di unicità** su `(courtId, startAt)` per le
+    prenotazioni attive (esclusione totale dei doppioni a livello DB).
+  - **Auth**: login soci gestito da Supabase Auth.
+  - **Row Level Security (RLS)**: la regola "solo soci con tessera `VALID` possono prenotare" e l'accesso
+    per ruolo (RBAC) sono imposti dal database, non dal frontend.
+  - **Postgres functions / Edge Functions**: operazioni atomiche e logica sensibile (creazione
+    prenotazione, disdetta con calcolo penale, no-show, esonero) eseguite lato server-DB in transazione.
+  - **Migrazioni** versionate (cartella `supabase/migrations`).
+- **Shared**: tipi/DTO condivisi in `packages/shared` (estendere con `Court`, `Booking`, `Charge`, ecc.),
+  allineati allo schema Postgres.
+- **Hosting**: **Cloudflare Pages** collegato al repository Git (deploy automatico a ogni push, banda
+  illimitata, uso commerciale consentito, gratis) → fornisce il "link di accesso". Alternative free
+  equivalenti: Netlify.
+- **Costi**: **0 €**. Supabase free (500 MB DB, 50.000 utenti/mese, API illimitate) e Cloudflare Pages free
+  sono ampiamente sufficienti per un club con 3 campi.
+- **Asterisco operativo**: Supabase free mette in pausa il progetto dopo **7 giorni di inattività del
+  database**; si previene con un **ping giornaliero gratuito** (es. GitHub Action schedulata). I dati non
+  si perdono.
+
+> Nota migrazione: lo skeleton in `apps/api` (Fastify) e i relativi `.env` restano nel repo come storia ma
+> non sono il target dell'MVP; le rotte descritte in §8 si traducono in tabelle/RLS/funzioni Supabase e
+> chiamate del client Supabase dal frontend.
 
 ---
 
@@ -328,7 +352,8 @@ Coerente con DEV_BEST_PRACTICE §10.3 (unit test su regole critiche).
 5. **Registrazione soci**: self-registration con validazione staff, o solo creazione da parte dello staff?
 6. **Tessera che scade tra prenotazione e gioco**: si blocca alla prenotazione o anche se scade prima dello slot?
 7. **Limiti**: numero massimo di prenotazioni attive per socio? Prenotazioni ricorrenti necessarie in MVP?
-8. **Database**: confermare scelta (SQLite dev / Postgres prod) e hosting.
+8. ~~**Database/hosting**~~ — **RISOLTO**: PWA su Cloudflare Pages + Supabase (PostgreSQL), costo 0,
+   niente SQLite/server da gestire (vedi §9).
 
 ---
 
