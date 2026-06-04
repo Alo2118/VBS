@@ -60,17 +60,43 @@ export const fetchBookingPolicy = async (): Promise<BookingPolicy> => {
 
 export type MyBooking = Booking & { players: number };
 
+/**
+ * Conteggio dei giocatori per prenotazione. Best-effort: se la tabella della
+ * rosa non è disponibile (es. migrazione non ancora applicata) NON deve mai
+ * impedire di vedere e disdire le prenotazioni — torna semplicemente vuoto.
+ */
+const fetchPlayerCounts = async (
+  bookingIds: string[]
+): Promise<Record<string, number>> => {
+  if (bookingIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from("booking_players")
+      .select("booking_id")
+      .in("booking_id", bookingIds);
+    if (error) return {};
+    const counts: Record<string, number> = {};
+    for (const row of data ?? []) {
+      const id = (row as { booking_id: string }).booking_id;
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+};
+
 export const fetchMyBookings = async (): Promise<MyBooking[]> => {
   const { data, error } = await supabase
     .from("bookings")
-    .select("*, booking_players(count)")
+    .select("*")
     .order("start_at", { ascending: false });
   const err = toBusinessError(error);
   if (err) throw err;
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const playersRel = row.booking_players as { count?: number }[] | null;
-    return { ...mapBooking(row), players: playersRel?.[0]?.count ?? 0 };
-  });
+  const bookings = (data ?? []).map(mapBooking);
+
+  const counts = await fetchPlayerCounts(bookings.map((b) => b.id));
+  return bookings.map((b) => ({ ...b, players: counts[b.id] ?? 0 }));
 };
 
 /** Crea una prenotazione (atomica lato DB; lancia BusinessError su conflitto/tessera). */
