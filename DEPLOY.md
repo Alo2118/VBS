@@ -20,6 +20,8 @@ progetto Supabase gratuito.
 1. Nel repo: **Settings → Secrets and variables → Actions → New repository secret**:
    - `VITE_SUPABASE_URL` = Project URL
    - `VITE_SUPABASE_ANON_KEY` = anon public key
+   - (facoltativo) `SUPABASE_SERVICE_ROLE_KEY` = *service_role key* (per la
+     manutenzione giornaliera: scadenza tessere + keep-alive del progetto free).
 2. **Settings → Pages → Build and deployment → Source** = **GitHub Actions**.
 3. Il workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
    parte a ogni push (o avvialo a mano da **Actions → Deploy PWA su GitHub Pages → Run workflow**).
