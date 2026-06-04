@@ -158,33 +158,45 @@ export type DayBooking = {
   players: number;
 };
 
+const BOOKING_SELECT =
+  "id, start_at, end_at, status, price, members:member_id(full_name, nickname), courts:court_id(name), booking_players(count)";
+
+const mapDayBooking = (r: Record<string, unknown>): DayBooking => {
+  const playersRel = r.booking_players as { count?: number }[] | null;
+  const member = r.members as { full_name?: string; nickname?: string } | null;
+  return {
+    id: r.id as string,
+    startAt: r.start_at as string,
+    endAt: r.end_at as string,
+    status: r.status as string,
+    price: Number(r.price ?? 0),
+    players: playersRel?.[0]?.count ?? 0,
+    memberName: member?.full_name ?? "—",
+    memberNickname: member?.nickname ?? undefined,
+    courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
+  };
+};
+
 export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> => {
-  const from = `${isoDate}T00:00:00`;
-  const to = `${isoDate}T23:59:59`;
   const { data, error } = await supabase
     .from("bookings")
-    .select(
-      "id, start_at, end_at, status, price, members:member_id(full_name, nickname), courts:court_id(name), booking_players(count)"
-    )
-    .gte("start_at", from)
-    .lte("start_at", to)
+    .select(BOOKING_SELECT)
+    .gte("start_at", `${isoDate}T00:00:00`)
+    .lte("start_at", `${isoDate}T23:59:59`)
     .order("start_at");
-  const rows = unwrap(data, error) ?? [];
-  return rows.map((r: Record<string, unknown>) => {
-    const playersRel = r.booking_players as { count?: number }[] | null;
-    const member = r.members as { full_name?: string; nickname?: string } | null;
-    return {
-      id: r.id as string,
-      startAt: r.start_at as string,
-      endAt: r.end_at as string,
-      status: r.status as string,
-      price: Number(r.price ?? 0),
-      players: playersRel?.[0]?.count ?? 0,
-      memberName: member?.full_name ?? "—",
-      memberNickname: member?.nickname ?? undefined,
-      courtName: ((r.courts as { name?: string } | null)?.name) ?? "—"
-    };
-  });
+  return (unwrap(data, error) ?? []).map(mapDayBooking);
+};
+
+/** Prossime prenotazioni confermate (per il dettaglio rapido in dashboard). */
+export const fetchUpcomingBookings = async (limit = 20): Promise<DayBooking[]> => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(BOOKING_SELECT)
+    .eq("status", "CONFIRMED")
+    .gt("start_at", new Date().toISOString())
+    .order("start_at")
+    .limit(limit);
+  return (unwrap(data, error) ?? []).map(mapDayBooking);
 };
 
 export const markNoShow = async (bookingId: string): Promise<void> => {

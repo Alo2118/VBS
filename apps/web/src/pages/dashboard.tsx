@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AdminSummary } from "@vbs/shared";
+import { Card } from "@/shared/ui/card";
 import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
+import { StatusPill } from "@/shared/ui/status-pill";
+import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
 import { fetchAdminSummary } from "@/shared/api/dashboard";
+import { fetchUpcomingBookings } from "@/shared/api/staff";
+import type { DayBooking } from "@/shared/api/staff";
+import { BookingDetailModal } from "@/shared/booking/booking-detail-modal";
+import { formatDateTime, formatTime } from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
 
 type Tone = "neutral" | "info" | "warning" | "danger";
@@ -47,12 +54,16 @@ const Stat = ({
 export const DashboardPage = () => {
   const notify = useToast();
   const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [upcoming, setUpcoming] = useState<DayBooking[]>([]);
+  const [detail, setDetail] = useState<DayBooking | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setSummary(await fetchAdminSummary());
+      const [s, u] = await Promise.all([fetchAdminSummary(), fetchUpcomingBookings()]);
+      setSummary(s);
+      setUpcoming(u);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
     } finally {
@@ -114,6 +125,49 @@ export const DashboardPage = () => {
             hint="Sotto il minimo giocatori"
           />
         </div>
+      )}
+
+      {!loading && (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Prossime prenotazioni</h2>
+            <span className="text-sm text-muted">Tocca per il dettaglio</span>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="text-base text-muted">Nessuna prenotazione in arrivo.</p>
+          ) : (
+            <ul className="space-y-2">
+              {upcoming.map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    onClick={() => setDetail(b)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-left transition hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {b.memberName}
+                        <NicknameTag nickname={b.memberNickname} className="ml-2" />
+                      </span>
+                      <span className="block text-sm text-muted capitalize">
+                        {formatDateTime(b.startAt)} · {b.courtName}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm text-muted">{formatTime(b.startAt)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
+      {detail && (
+        <BookingDetailModal
+          booking={detail}
+          onClose={() => setDetail(null)}
+          onChanged={load}
+        />
       )}
     </Page>
   );
