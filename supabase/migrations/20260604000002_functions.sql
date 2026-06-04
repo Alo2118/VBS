@@ -262,7 +262,7 @@ begin
      set aics_number = p_aics,
          membership_start_date = p_start,
          membership_end_date = p_end,
-         membership_status = case when p_end >= current_date then 'VALID' else 'EXPIRED' end,
+         membership_status = (case when p_end >= current_date then 'VALID' else 'EXPIRED' end)::membership_status,
          validated_by = v_actor,
          validated_at = now()
    where id = p_member_id
