@@ -10,9 +10,15 @@ progetto Supabase gratuito.
    [`supabase/setup_all.sql`](supabase/setup_all.sql) → **Run**.
    (crea tabelle, funzioni, RLS, trigger e i dati iniziali: 3 campi, orari, prezzi)
    - In alternativa con la CLI: `supabase link --project-ref <ref>` poi `supabase db push`.
-3. In **Project Settings → API** copia:
-   - **Project URL** → sarà `VITE_SUPABASE_URL`
-   - **anon public key** → sarà `VITE_SUPABASE_ANON_KEY`
+3. Recupera le credenziali (la dashboard Supabase è cambiata di recente):
+   - **Modo rapido**: pulsante verde **Connect** in alto → scheda **App Frameworks** →
+     copia **Project URL** (`VITE_SUPABASE_URL`) e **anon/publishable key**
+     (`VITE_SUPABASE_ANON_KEY`).
+   - **Dal menu**: ingranaggio **Settings** → **Data API** (Project URL) e **API Keys**
+     (usa la **Publishable key** `sb_publishable_...`, oppure la **anon public** legacy
+     `eyJ...`). Sono chiavi pubbliche: stanno nel browser, protette dalla RLS.
+   - Per il secret opzionale `SUPABASE_SERVICE_ROLE_KEY` usa la **service_role**
+     (legacy) o una **Secret key** nuova: solo nei secret di GitHub, mai nel frontend.
 4. In **Authentication → Providers → Email**: tieni attivo l'accesso con email/password.
    Per i test, disattiva la conferma email (**Confirm email** = off).
 
