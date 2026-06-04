@@ -1,48 +1,48 @@
-# VBS Gestione Impianti Sportivi
+# VBS — Prenotazione Campi Beach Volley
 
-Monorepo con API Fastify + Web React/Vite per la gestione di campi beach, membri, bar e wallet.
+App per la gestione delle prenotazioni di 3 campi da beach volley di un'associazione
+sportiva. Vedi `PRD.md` (documento di sviluppo) e `DEV_BEST_PRACTICE.md` (regole di codifica).
+
+## Architettura (vedi PRD §9)
+- **Frontend**: PWA React + Vite + Tailwind (`apps/web`) — webapp con link **e** app installabile.
+- **Backend/Dati**: **Supabase** (PostgreSQL + Auth + RLS) — regole di business in DB + funzioni
+  SQL (`supabase/`). Anti-overbooking via vincolo di unicità.
+- **Shared**: tipi/DTO condivisi (`packages/shared`).
+- **Hosting**: Cloudflare Pages (frontend) + Supabase free tier. Costo 0.
+
+> Lo skeleton in `apps/api` (Fastify) resta come storia ma non è il target dell'MVP.
 
 ## Requisiti
-- Node.js 18+
-- npm 9+
+- Node.js 18+, npm 9+
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (per il backend locale)
 
 ## Avvio locale
-
-### 1. Installa dipendenze
 ```bash
+# 1. Dipendenze
 npm install
-```
 
-### 2. Avvia API
-```bash
-npm run dev:api
-```
+# 2. Backend Supabase (Postgres + Auth + Studio) — vedi supabase/README.md
+supabase start
+supabase db reset           # applica migrazioni + seed (3 campi, orari, prezzi)
 
-### 3. Avvia Web
-```bash
+# 3. Configura il web: copia le chiavi stampate da `supabase start`
+cp apps/web/.env.example apps/web/.env
+#   -> imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+
+# 4. Avvia il web (PWA)
 npm run dev:web
 ```
 
-## Configurazioni principali
-Copia i file `.env.example` nei rispettivi workspace:
-
-```
-apps/api/.env.example -> apps/api/.env
-apps/web/.env.example -> apps/web/.env
-```
-
-### Variabili API
-- `BOOKING_CANCELLATION_HOURS`: ore minime per cancellare (default 24)
-- `BOOKING_MAX_ADVANCE_DAYS`: giorni massimi di anticipo (default 14)
-- `BOOKING_SLOT_DURATION_MINUTES`: durata slot (default 60)
-- `NOTIFICATIONS_EMAIL_ENABLED`: abilita email (default true)
-- `NOTIFICATIONS_SMS_ENABLED`: abilita SMS (default true)
-- `WEB_ORIGIN`: origin consentito per CORS
-
-### Variabili Web
-- `VITE_API_URL`: base URL API (default http://localhost:3001)
-
 ## Script utili
-- `npm run dev:api`: avvia API Fastify
-- `npm run dev:web`: avvia UI React/Vite
+- `npm run dev:web` — avvia il frontend (Vite, porta 5173)
+- `npm run build` — build di tutti i workspace
+- `npm run typecheck` — type-check di tutti i workspace
 
+## Struttura
+```
+apps/web            Frontend PWA (React/Vite/Tailwind)
+  src/shared/api    Client Supabase + moduli di dominio (bookings, auth)
+  src/shared/ui     Componenti UI centralizzati
+packages/shared     Tipi/DTO condivisi
+supabase            Migrazioni, funzioni di business, RLS, seed
+```

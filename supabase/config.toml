@@ -1,0 +1,24 @@
+# Configurazione Supabase locale (CLI). Vedi https://supabase.com/docs/guides/cli
+project_id = "vbs-beachvolley"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+# Login via email/password per i soci (auto-registrazione, poi validazione staff).
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
