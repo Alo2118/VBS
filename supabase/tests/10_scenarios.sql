@@ -144,8 +144,8 @@ begin
          created_at = now() - interval '1 day'
    where id = v_b.id;
   perform cancel_booking(v_b.id);
-  select amount into v_amount from charges
-   where booking_id = v_b.id and type = 'LATE_CANCELLATION';
+  select amount into v_amount from ledger_entries
+   where booking_id = v_b.id and kind = 'PENALTY';
   if v_amount is null or v_amount <> v_b.price then
     raise exception 'TEST 7 FALLITO: addebito atteso %, ottenuto %', v_b.price, v_amount;
   end if;
@@ -166,32 +166,33 @@ begin
   select * into v_b from create_booking(v_court, v_start);
   perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
   perform mark_no_show(v_b.id);
-  select amount into v_amount from charges
-   where booking_id = v_b.id and type = 'NO_SHOW';
+  select amount into v_amount from ledger_entries
+   where booking_id = v_b.id and kind = 'PENALTY';
   if v_amount is null or v_amount <> v_b.price then
     raise exception 'TEST 8 FALLITO: addebito no-show atteso %, ottenuto %', v_b.price, v_amount;
   end if;
   raise notice 'TEST 8 OK: no-show, addebito % EUR', v_amount;
 end $$;
 
--- 9) Esonero addebito: motivazione obbligatoria + solo Manager/Admin
+-- 9) Storno (WAIVER) sul conto: azzera il dovuto; un socio non può stornare
 do $$
-declare v_charge uuid; v_status charge_status;
+declare v_bal numeric;
 begin
-  select id into v_charge from charges where status = 'DUE' limit 1;
-  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
-  begin
-    perform waive_charge(v_charge, '');
-    raise exception 'TEST 9 FALLITO: esonero senza motivazione accettato';
-  exception when others then
-    if sqlerrm <> 'NOT_AUTHORIZED' then raise; end if;
-  end;
-  perform waive_charge(v_charge, 'impianto chiuso per maltempo');
-  select status into v_status from charges where id = v_charge;
-  if v_status <> 'WAIVED' then
-    raise exception 'TEST 9 FALLITO: addebito non esonerato';
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF/ADMIN
+  perform post_account_charge('33333333-3333-3333-3333-333333333333', 'PENALTY', 10, 'Penale');
+  perform post_account_payment('33333333-3333-3333-3333-333333333333', 10, null::pay_method, 'WAIVER', 'Errore staff');
+  select account_balance('33333333-3333-3333-3333-333333333333') into v_bal;
+  if v_bal <> 0 then
+    raise exception 'TEST 9 FALLITO: lo storno non azzera il dovuto (%)', v_bal;
   end if;
-  raise notice 'TEST 9 OK: esonero con motivazione';
+  -- un socio non può stornare
+  begin
+    perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+    perform post_account_payment('33333333-3333-3333-3333-333333333333', 5, null::pay_method, 'WAIVER', 'x');
+    raise exception 'TEST 9 FALLITO: un socio non deve poter stornare';
+  exception when sqlstate 'P0001' then null;
+  end;
+  raise notice 'TEST 9 OK: storno sul conto, solo staff';
 end $$;
 
 -- 10) Disponibilità settimanale: 7 giorni, con colonna "day" coerente
@@ -305,11 +306,11 @@ begin
   -- lo staff segna no-show, poi lo annulla
   perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
   perform mark_no_show(v_b.id);
-  select count(*) into v_n from charges where booking_id = v_b.id and type = 'NO_SHOW';
+  select count(*) into v_n from ledger_entries where booking_id = v_b.id and kind = 'PENALTY';
   if v_n <> 1 then raise exception 'TEST 15 FALLITO: addebito no-show mancante'; end if;
   perform undo_no_show(v_b.id);
   select status into v_status from bookings where id = v_b.id;
-  select count(*) into v_n from charges where booking_id = v_b.id and type = 'NO_SHOW' and status = 'DUE';
+  select count(*) into v_n from ledger_entries where booking_id = v_b.id and kind = 'PENALTY';
   if v_status <> 'CONFIRMED' or v_n <> 0 then
     raise exception 'TEST 15 FALLITO: stato % / addebiti dovuti %', v_status, v_n;
   end if;
@@ -330,7 +331,7 @@ begin
   if (select status from bookings where id = v_b1.id) <> 'CANCELLED' then
     raise exception 'TEST 16 FALLITO: campo non liberato';
   end if;
-  if exists (select 1 from charges where booking_id = v_b1.id) then
+  if exists (select 1 from ledger_entries where booking_id = v_b1.id and kind = 'PENALTY') then
     raise exception 'TEST 16 FALLITO: addebito generato senza penale';
   end if;
   -- lo slot è di nuovo prenotabile (anti-overbooking lo consente)
@@ -339,7 +340,7 @@ begin
   -- con penale
   perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
   perform staff_cancel_booking(v_b2.id, true);
-  select amount into v_amount from charges where booking_id = v_b2.id and type = 'LATE_CANCELLATION';
+  select amount into v_amount from ledger_entries where booking_id = v_b2.id and kind = 'PENALTY';
   if v_amount is null or v_amount <> v_b2.price then
     raise exception 'TEST 16 FALLITO: penale attesa %, ottenuta %', v_b2.price, v_amount;
   end if;
@@ -358,7 +359,7 @@ begin
   select * into v_b from create_booking(v_court, v_start);
   update bookings set free_cancellation_deadline = now() - interval '1 hour' where id = v_b.id;
   perform cancel_booking(v_b.id);
-  select count(*) into v_n from charges where booking_id = v_b.id;
+  select count(*) into v_n from ledger_entries where booking_id = v_b.id and kind = 'PENALTY';
   if v_n <> 0 then
     raise exception 'TEST 17a FALLITO: addebito entro la tolleranza (%)', v_n;
   end if;
@@ -371,7 +372,7 @@ begin
          created_at = now() - interval '3 hours'
    where id = v_b.id;
   perform cancel_booking(v_b.id);
-  select count(*) into v_n from charges where booking_id = v_b.id and type = 'LATE_CANCELLATION';
+  select count(*) into v_n from ledger_entries where booking_id = v_b.id and kind = 'PENALTY';
   if v_n <> 1 then
     raise exception 'TEST 17b FALLITO: penale attesa oltre la tolleranza (%)', v_n;
   end if;
@@ -411,12 +412,12 @@ begin
     raise exception 'TEST 18 FALLITO: stato % motivo %', v_status, v_reason;
   end if;
 
-  -- una notifica per ciascun giocatore (intestatario + rosa) = 2, senza penale
-  select count(*) into v_n from notifications where booking_id = v_b.id;
+  -- una notifica di annullamento per ciascun giocatore (intestatario + rosa) = 2
+  select count(*) into v_n from notifications where booking_id = v_b.id and type = 'BOOKING_CANCELLED';
   if v_n <> 2 then
     raise exception 'TEST 18 FALLITO: attese 2 notifiche, ottenute %', v_n;
   end if;
-  select count(*) into v_n from charges where booking_id = v_b.id;
+  select count(*) into v_n from ledger_entries where booking_id = v_b.id and kind = 'PENALTY';
   if v_n <> 0 then
     raise exception 'TEST 18 FALLITO: nessuna penale attesa per chiusura (%)', v_n;
   end if;
@@ -515,9 +516,9 @@ begin
     raise exception 'TEST 22 FALLITO: il capogruppo non deve essere avvisato (%)', v_n;
   end if;
 
-  -- 23) Addebito/penale -> avviso al socio addebitato
-  insert into charges (booking_id, member_id, type, amount)
-  values (v_bid, '22222222-2222-2222-2222-222222222222', 'NO_SHOW', 10);
+  -- 23) Penale sul conto -> avviso al socio addebitato
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
+  perform post_account_charge('22222222-2222-2222-2222-222222222222', 'PENALTY', 10, 'Penale', v_bid);
   select count(*) into v_n from notifications
    where type = 'CHARGE' and member_id = '22222222-2222-2222-2222-222222222222'
      and booking_id = v_bid;
@@ -557,17 +558,18 @@ do $$
 declare v_bal numeric; v_n int;
 begin
   perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
-  perform post_account_charge('22222222-2222-2222-2222-222222222222', 'BAR', 5, 'Birra');
-  perform post_account_charge('22222222-2222-2222-2222-222222222222', 'COURT', 8, 'Quota campo');
-  perform post_account_payment('22222222-2222-2222-2222-222222222222', 10, 'CASH');
+  -- socio 999 (conto pulito) per verificare i saldi in isolamento
+  perform post_account_charge('99999999-9999-9999-9999-999999999999', 'BAR', 5, 'Birra');
+  perform post_account_charge('99999999-9999-9999-9999-999999999999', 'COURT', 8, 'Quota campo');
+  perform post_account_payment('99999999-9999-9999-9999-999999999999', 10, 'CASH');
 
-  select account_balance('22222222-2222-2222-2222-222222222222') into v_bal;
+  select account_balance('99999999-9999-9999-9999-999999999999') into v_bal;
   if v_bal <> -3 then
     raise exception 'TEST 25 FALLITO: saldo atteso -3, ottenuto %', v_bal;
   end if;
 
   select count(*) into v_n from list_member_accounts()
-   where member_id = '22222222-2222-2222-2222-222222222222' and balance = -3;
+   where member_id = '99999999-9999-9999-9999-999999999999' and balance = -3;
   if v_n <> 1 then
     raise exception 'TEST 25 FALLITO: conto non in elenco cassa (%)', v_n;
   end if;
@@ -575,7 +577,7 @@ begin
   -- un socio non può vedere il saldo di un altro
   begin
     perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
-    perform account_balance('22222222-2222-2222-2222-222222222222');
+    perform account_balance('99999999-9999-9999-9999-999999999999');
     raise exception 'TEST 25 FALLITO: un socio non deve leggere il conto altrui';
   exception when sqlstate 'P0001' then null;
   end;

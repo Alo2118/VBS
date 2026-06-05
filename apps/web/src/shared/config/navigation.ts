@@ -17,6 +17,5 @@ export const navigationItems: NavItem[] = [
   { label: "Presenze", path: "/attendance", icon: "✅", staffOnly: true },
   { label: "Soci", path: "/members", icon: "👥", staffOnly: true },
   { label: "Orari", path: "/schedule", icon: "🕒", staffOnly: true },
-  { label: "Tariffe", path: "/pricing", icon: "💶", staffOnly: true },
-  { label: "Addebiti", path: "/charges", icon: "🧾", staffOnly: true }
+  { label: "Tariffe", path: "/pricing", icon: "💶", staffOnly: true }
 ];

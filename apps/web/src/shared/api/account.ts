@@ -132,3 +132,21 @@ export const postPayment = async (
   const err = toBusinessError(error);
   if (err) throw err;
 };
+
+/** Storno/esonero di un importo dovuto (solo gestione: ADMIN/MANAGER). */
+export const postWaiver = async (
+  memberId: string,
+  amount: number,
+  reason: string
+): Promise<void> => {
+  const { error } = await supabase.rpc("post_account_payment", {
+    p_member: memberId,
+    p_amount: amount,
+    p_method: null,
+    p_kind: "WAIVER",
+    p_description: reason,
+    p_booking: null
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};

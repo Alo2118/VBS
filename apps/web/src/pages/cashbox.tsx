@@ -8,6 +8,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
+import { useAuth } from "@/shared/auth/auth-context";
 import { searchValidMembers } from "@/shared/api/bookings";
 import type { MemberLite } from "@vbs/shared";
 import {
@@ -15,6 +16,7 @@ import {
   fetchMemberLedger,
   postCharge,
   postPayment,
+  postWaiver,
   signedAmount,
   type LedgerEntry,
   type LedgerKind,
@@ -181,6 +183,8 @@ const AccountModal = ({
   onClose: () => void;
   notify: (m: string, t?: "success" | "error" | "info") => void;
 }) => {
+  const { profile } = useAuth();
+  const canWaive = profile?.role === "ADMIN" || profile?.role === "MANAGER";
   const [balance, setBalance] = useState<number | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -188,7 +192,8 @@ const AccountModal = ({
   // Form incasso
   const [payAmount, setPayAmount] = useState("");
   const [method, setMethod] = useState<PayMethod>("CASH");
-  const [payKind, setPayKind] = useState<"PAYMENT" | "TOPUP">("PAYMENT");
+  const [payKind, setPayKind] = useState<"PAYMENT" | "TOPUP" | "WAIVER">("PAYMENT");
+  const [waiveReason, setWaiveReason] = useState("");
   // Form addebito
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeKind, setChargeKind] = useState<"COURT" | "BAR">("COURT");
@@ -211,11 +216,21 @@ const AccountModal = ({
       notify("Inserisci un importo valido.", "error");
       return;
     }
+    if (payKind === "WAIVER" && !waiveReason.trim()) {
+      notify("Indica il motivo dello storno.", "error");
+      return;
+    }
     setBusy(true);
     try {
-      await postPayment(target.memberId, amt, method, payKind);
-      notify("Incasso registrato.", "success");
+      if (payKind === "WAIVER") {
+        await postWaiver(target.memberId, amt, waiveReason.trim());
+        notify("Storno registrato.", "success");
+      } else {
+        await postPayment(target.memberId, amt, method, payKind);
+        notify("Incasso registrato.", "success");
+      }
       setPayAmount("");
+      setWaiveReason("");
       await reload();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
@@ -272,29 +287,7 @@ const AccountModal = ({
         {/* Registra incasso */}
         <div className="space-y-2 rounded-xl border border-line p-3">
           <p className="text-sm font-semibold uppercase tracking-wide text-muted">Registra incasso</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setMethod("CASH")}
-              className={cn(
-                "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                method === "CASH" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-              )}
-            >
-              💶 Contanti
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("SATISPAY")}
-              className={cn(
-                "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                method === "SATISPAY" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-              )}
-            >
-              📱 Satispay
-            </button>
-          </div>
-          <div className="flex gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 text-sm">
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={payKind === "PAYMENT"} onChange={() => setPayKind("PAYMENT")} />
               Pagamento
@@ -303,7 +296,44 @@ const AccountModal = ({
               <input type="radio" checked={payKind === "TOPUP"} onChange={() => setPayKind("TOPUP")} />
               Ricarica (prepagato)
             </label>
+            {canWaive && (
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={payKind === "WAIVER"} onChange={() => setPayKind("WAIVER")} />
+                Storno (esonera)
+              </label>
+            )}
           </div>
+          {payKind !== "WAIVER" ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMethod("CASH")}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
+                  method === "CASH" ? "border-transparent bg-brand-gradient text-white" : "border-line"
+                )}
+              >
+                💶 Contanti
+              </button>
+              <button
+                type="button"
+                onClick={() => setMethod("SATISPAY")}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
+                  method === "SATISPAY" ? "border-transparent bg-brand-gradient text-white" : "border-line"
+                )}
+              >
+                📱 Satispay
+              </button>
+            </div>
+          ) : (
+            <Input
+              label="Motivo dello storno"
+              value={waiveReason}
+              onChange={(e) => setWaiveReason(e.target.value)}
+              placeholder="es. errore di registrazione"
+            />
+          )}
           <Input
             label="Importo (€)"
             type="number"
@@ -314,7 +344,7 @@ const AccountModal = ({
             onChange={(e) => setPayAmount(e.target.value)}
           />
           <Button size="lg" className="w-full" disabled={busy} onClick={() => void registerPayment()}>
-            {busy ? "…" : "Registra incasso"}
+            {busy ? "…" : payKind === "WAIVER" ? "Registra storno" : "Registra incasso"}
           </Button>
         </div>
 

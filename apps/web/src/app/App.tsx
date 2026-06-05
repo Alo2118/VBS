@@ -10,7 +10,6 @@ import { PricingPage } from "@/pages/pricing";
 import { AttendancePage } from "@/pages/attendance";
 import { CashboxPage } from "@/pages/cashbox";
 import { BarPage } from "@/pages/bar";
-import { ChargesPage } from "@/pages/charges";
 import { LoginPage } from "@/pages/login";
 import { Spinner } from "@/shared/ui/spinner";
 import { ToastProvider } from "@/shared/ui/toast";
@@ -77,14 +76,6 @@ const AuthenticatedApp = () => (
         element={
           <RequireStaff>
             <AttendancePage />
-          </RequireStaff>
-        }
-      />
-      <Route
-        path="/charges"
-        element={
-          <RequireStaff>
-            <ChargesPage />
           </RequireStaff>
         }
       />
