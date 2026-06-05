@@ -42,6 +42,9 @@ const friendlyDay = (iso: string): string => {
   return formatDay(d);
 };
 
+/** Quante prenotazioni passate mostrare per volta (la lista cresce nel tempo). */
+const PAST_PAGE = 8;
+
 export const MyBookingsPage = () => {
   const notify = useToast();
   const [bookings, setBookings] = useState<MyBooking[]>([]);
@@ -50,6 +53,7 @@ export const MyBookingsPage = () => {
   const [target, setTarget] = useState<MyBooking | null>(null);
   const [roster, setRoster] = useState<MyBooking | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pastLimit, setPastLimit] = useState(PAST_PAGE);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -236,9 +240,18 @@ export const MyBookingsPage = () => {
           {past.length > 0 && (
             <section className="space-y-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
-                Passate e annullate
+                Passate e annullate ({past.length})
               </h3>
-              {past.map(renderPast)}
+              {past.slice(0, pastLimit).map(renderPast)}
+              {past.length > pastLimit && (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setPastLimit((n) => n + PAST_PAGE)}
+                >
+                  Mostra altre ({past.length - pastLimit})
+                </Button>
+              )}
             </section>
           )}
         </div>

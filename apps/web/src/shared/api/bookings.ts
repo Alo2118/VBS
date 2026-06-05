@@ -100,7 +100,13 @@ export const fetchMyBookings = async (): Promise<MyBooking[]> => {
   if (err) throw err;
   const rows = data ?? [];
 
-  const counts = await fetchPlayerCounts(rows.map((b) => (b as { id: string }).id));
+  // I conteggi giocatori servono solo alle prenotazioni future (le passate non
+  // li mostrano): limitiamo la seconda query, che altrimenti cresce nel tempo.
+  const now = Date.now();
+  const futureIds = rows
+    .filter((b) => new Date((b as { start_at: string }).start_at).getTime() > now)
+    .map((b) => (b as { id: string }).id);
+  const counts = await fetchPlayerCounts(futureIds);
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
     return {
