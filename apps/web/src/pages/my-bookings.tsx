@@ -10,15 +10,36 @@ import { useToast } from "@/shared/ui/toast";
 import { cancelBooking, fetchBookingPolicy, fetchMyBookings } from "@/shared/api/bookings";
 import type { MyBooking } from "@/shared/api/bookings";
 import { RosterModal } from "@/shared/booking/roster-modal";
-import { formatDateTime, formatTime } from "@/shared/utils/date";
+import { addDays, formatDay, formatTime, isSameDay } from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
 import { perPlayerShare } from "@/shared/utils/pricing";
 
-const statusLabel: Record<Booking["status"], { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
+const statusLabel: Record<
+  Booking["status"],
+  { label: string; tone: "success" | "warning" | "danger" | "info" }
+> = {
   CONFIRMED: { label: "Confermata", tone: "success" },
-  CANCELLED: { label: "Disdetta", tone: "info" },
+  CANCELLED: { label: "Annullata", tone: "info" },
   NO_SHOW: { label: "Mancata presentazione", tone: "danger" },
   COMPLETED: { label: "Completata", tone: "info" }
+};
+
+/** Colore del campo (pallino), coerente coi nomi Giallo/Bianco/Verde. */
+const courtColor = (name: string): string => {
+  const n = name.toLowerCase();
+  if (n.includes("giall")) return "#facc15";
+  if (n.includes("verde")) return "#22c55e";
+  if (n.includes("bianc")) return "#cbd5e1";
+  return "#38bdf8";
+};
+
+/** Data amichevole: Oggi / Domani / "mer 11 giugno". */
+const friendlyDay = (iso: string): string => {
+  const d = new Date(iso);
+  const now = new Date();
+  if (isSameDay(d, now)) return "Oggi";
+  if (isSameDay(d, addDays(now, 1))) return "Domani";
+  return formatDay(d);
 };
 
 export const MyBookingsPage = () => {
@@ -26,7 +47,7 @@ export const MyBookingsPage = () => {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [target, setTarget] = useState<Booking | null>(null);
+  const [target, setTarget] = useState<MyBooking | null>(null);
   const [roster, setRoster] = useState<MyBooking | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -79,10 +100,111 @@ export const MyBookingsPage = () => {
     }
   };
 
-  const lateCancellation = useMemo(() => (target ? isLate(target) : false), [target]);
+  const lateCancellation = useMemo(() => (target ? isLate(target) : false), [target, policy]);
 
-  const canManage = (b: Booking) =>
+  const isUpcoming = (b: Booking) =>
     b.status === "CONFIRMED" && new Date(b.startAt) > new Date();
+
+  // Prossime in ordine cronologico (la più vicina in alto); il resto sotto.
+  const { upcoming, past } = useMemo(() => {
+    const up = bookings.filter(isUpcoming).sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
+    const pa = bookings.filter((b) => !isUpcoming(b));
+    return { upcoming: up, past: pa };
+  }, [bookings]);
+
+  const renderUpcoming = (b: MyBooking) => {
+    const minPlayers = policy?.minPlayers ?? 4;
+    const missing = Math.max(0, minPlayers - b.players);
+    const complete = b.players >= minPlayers;
+    const share =
+      policy && b.players > 0
+        ? perPlayerShare({
+            players: b.players,
+            courtPrice: b.price,
+            perHeadPrice: b.perHeadPrice,
+            threshold: policy.perHeadThreshold
+          })
+        : null;
+
+    return (
+      <Card key={b.id} className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-xl font-bold">
+              <span
+                className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10"
+                style={{ background: courtColor(b.courtName) }}
+                aria-hidden
+              />
+              <span className="truncate">Campo {b.courtName}</span>
+            </p>
+            <p className="mt-1 text-base">
+              <span className="font-semibold capitalize text-ink">{friendlyDay(b.startAt)}</span>{" "}
+              <span className="text-muted">
+                · {formatTime(b.startAt)}–{formatTime(b.endAt)}
+                {b.seriesId ? " · fissa" : ""}
+              </span>
+            </p>
+          </div>
+          <StatusPill {...statusLabel[b.status]} />
+        </div>
+
+        {/* Stato della squadra: chiaro a colpo d'occhio */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <span className="text-base font-medium">
+            👥 {b.players} {b.players === 1 ? "giocatore" : "giocatori"}
+          </span>
+          {complete ? (
+            <StatusPill label="Squadra al completo" tone="success" />
+          ) : (
+            <StatusPill
+              label={missing === 1 ? "Manca 1 giocatore" : `Mancano ${missing} giocatori`}
+              tone="warning"
+            />
+          )}
+          {share !== null && (
+            <span className="text-base text-muted">· {formatEur(share)} a testa</span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" size="lg" className="flex-1" onClick={() => setRoster(b)}>
+            Gestisci giocatori
+          </Button>
+          <Button variant="danger" size="lg" className="flex-1" onClick={() => setTarget(b)}>
+            Disdici
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
+  const renderPast = (b: MyBooking) => (
+    <Card key={b.id} className="space-y-1.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-lg font-semibold">
+            <span
+              className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10"
+              style={{ background: courtColor(b.courtName) }}
+              aria-hidden
+            />
+            <span className="truncate">Campo {b.courtName}</span>
+          </p>
+          <p className="mt-0.5 text-base text-muted">
+            <span className="capitalize">{friendlyDay(b.startAt)}</span> · {formatTime(b.startAt)}–
+            {formatTime(b.endAt)}
+          </p>
+        </div>
+        <StatusPill {...statusLabel[b.status]} />
+      </div>
+      {b.status === "CANCELLED" && b.cancellationReason && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Motivo: {b.cancellationReason}
+        </p>
+      )}
+    </Card>
+  );
 
   return (
     <Page title="Le mie prenotazioni">
@@ -90,60 +212,36 @@ export const MyBookingsPage = () => {
         <Spinner />
       ) : bookings.length === 0 ? (
         <Card>
-          <p className="text-center text-base text-muted">Non hai ancora prenotazioni.</p>
+          <p className="text-center text-base text-muted">
+            Non hai ancora prenotazioni. Vai su «Prenota» per riservare un campo.
+          </p>
         </Card>
       ) : (
-        bookings.map((b) => {
-          const upcoming = canManage(b);
-          const share =
-            policy && b.players > 0
-              ? perPlayerShare({
-                  players: b.players,
-                  courtPrice: b.price,
-                  perHeadPrice: b.perHeadPrice,
-                  threshold: policy.perHeadThreshold
-                })
-              : null;
-          const underfilled = policy ? b.players < policy.minPlayers : false;
-          return (
-            <Card key={b.id} className="space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold capitalize">{formatDateTime(b.startAt)}</p>
-                  <p className="text-base text-muted">
-                    Fine {formatTime(b.endAt)}
-                    {b.seriesId ? " · fissa" : ""}
-                  </p>
-                </div>
-                <StatusPill {...statusLabel[b.status]} />
-              </div>
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+              Prossime ({upcoming.length})
+            </h3>
+            {upcoming.length === 0 ? (
+              <Card>
+                <p className="text-center text-base text-muted">
+                  Nessuna prenotazione in programma.
+                </p>
+              </Card>
+            ) : (
+              upcoming.map(renderUpcoming)
+            )}
+          </section>
 
-              {upcoming && (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-                  <p className="text-base">
-                    {b.players} {b.players === 1 ? "giocatore" : "giocatori"}
-                    {share !== null && (
-                      <span className="text-muted"> · {formatEur(share)} a testa</span>
-                    )}
-                    {underfilled && (
-                      <span className="ml-2 text-amber-300">
-                        servono almeno {policy?.minPlayers}
-                      </span>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <Button variant="secondary" size="lg" onClick={() => setRoster(b)}>
-                      Giocatori
-                    </Button>
-                    <Button variant="danger" size="lg" onClick={() => setTarget(b)}>
-                      Disdici
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
-          );
-        })
+          {past.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                Passate e annullate
+              </h3>
+              {past.map(renderPast)}
+            </section>
+          )}
+        </div>
       )}
 
       <Modal
@@ -163,14 +261,17 @@ export const MyBookingsPage = () => {
       >
         {target && (
           <div className="space-y-3">
-            <p className="capitalize">{formatDateTime(target.startAt)}</p>
+            <p className="font-medium">
+              Campo {target.courtName} ·{" "}
+              <span className="capitalize">{friendlyDay(target.startAt)}</span> {formatTime(target.startAt)}
+            </p>
             {lateCancellation ? (
-              <p className="rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-2 text-base text-red-200">
+              <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-base text-red-800">
                 Sei oltre il termine di disdetta gratuita: sarà dovuto il pagamento del campo
                 ({formatEur(target.price)}).
               </p>
             ) : (
-              <p className="text-base text-emerald-300">
+              <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-base text-emerald-800">
                 {new Date() > new Date(target.freeCancellationDeadline)
                   ? "La disdetta è gratuita perché hai prenotato da poco."
                   : "La disdetta è gratuita: sei entro i termini."}

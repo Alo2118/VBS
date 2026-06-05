@@ -59,7 +59,11 @@ export const fetchBookingPolicy = async (): Promise<BookingPolicy> => {
   };
 };
 
-export type MyBooking = Booking & { players: number };
+export type MyBooking = Booking & {
+  players: number;
+  courtName: string;
+  cancellationReason?: string;
+};
 
 /**
  * Conteggio dei giocatori per prenotazione. Best-effort: se la tabella della
@@ -90,14 +94,22 @@ const fetchPlayerCounts = async (
 export const fetchMyBookings = async (): Promise<MyBooking[]> => {
   const { data, error } = await supabase
     .from("bookings")
-    .select("*")
+    .select("*, court:court_id(name)")
     .order("start_at", { ascending: false });
   const err = toBusinessError(error);
   if (err) throw err;
-  const bookings = (data ?? []).map(mapBooking);
+  const rows = data ?? [];
 
-  const counts = await fetchPlayerCounts(bookings.map((b) => b.id));
-  return bookings.map((b) => ({ ...b, players: counts[b.id] ?? 0 }));
+  const counts = await fetchPlayerCounts(rows.map((b) => (b as { id: string }).id));
+  return rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      ...mapBooking(r),
+      players: counts[r.id as string] ?? 0,
+      courtName: ((r.court as { name?: string } | null)?.name as string) ?? "",
+      cancellationReason: (r.cancellation_reason as string) ?? undefined
+    };
+  });
 };
 
 /** Crea una prenotazione (atomica lato DB; lancia BusinessError su conflitto/tessera). */
