@@ -1,13 +1,19 @@
 import type React from "react";
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { navGroupOrder, navigationItems } from "@/shared/config/navigation";
 import { cn } from "@/shared/ui/cn";
 import { Button } from "@/shared/ui/button";
+import { Modal } from "@/shared/ui/modal";
 import { BrandFooter, BrandMark } from "@/shared/ui/brand";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { NotificationBell } from "@/shared/ui/notification-bell";
 import { signOut } from "@/shared/api/auth";
 import { useAuth } from "@/shared/auth/auth-context";
+
+/** Quante voci mostrare direttamente nella barra mobile prima di raggrupparle in «Altro». */
+const MOBILE_INLINE_MAX = 5;
+const MOBILE_PRIMARY = 4;
 
 const MembershipPill = ({ valid }: { valid: boolean }) => (
   <StatusPill
@@ -24,6 +30,20 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     (item.cashier && isCashier);
   const items = navigationItems.filter(canSee);
   const valid = profile?.membershipStatus === "VALID";
+
+  // Barra mobile: se le voci sono troppe, ne mostro alcune e raccolgo le altre in «Altro».
+  const location = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const overflow = items.length > MOBILE_INLINE_MAX;
+  const primaryItems = overflow ? items.slice(0, MOBILE_PRIMARY) : items;
+  const extraItems = overflow ? items.slice(MOBILE_PRIMARY) : [];
+  const extraActive = extraItems.some((i) => i.path === location.pathname);
+
+  const navItemClass = (isActive: boolean) =>
+    cn(
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-xs font-medium transition",
+      isActive ? "bg-brand-gradient text-white shadow-soft" : "text-muted hover:bg-sand/40"
+    );
 
   return (
     <div className="min-h-screen bg-surface">
@@ -106,30 +126,53 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         {/* Contenuto: padding inferiore per non finire sotto la barra mobile */}
         <main className="flex-1 pb-24 md:pb-0">
           {children}
-          <BrandFooter className="mt-8" />
+          <BrandFooter className="mt-6" />
         </main>
       </div>
 
-      {/* Barra di navigazione inferiore (solo mobile): target ampi, scrollabile */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-line bg-card/95 px-2 py-1.5 backdrop-blur md:hidden">
-        {items.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              cn(
-                "flex min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-xs font-medium transition",
-                isActive ? "bg-brand-gradient text-white shadow-soft" : "text-muted hover:bg-sand/40"
-              )
-            }
-          >
+      {/* Barra di navigazione inferiore (solo mobile): voci dirette + «Altro» se troppe */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex gap-1 border-t border-line bg-card/95 px-2 py-1.5 backdrop-blur md:hidden">
+        {primaryItems.map((item) => (
+          <NavLink key={item.path} to={item.path} className={({ isActive }) => navItemClass(isActive)}>
             <span className="text-xl leading-none" aria-hidden>
               {item.icon}
             </span>
-            <span className="whitespace-nowrap">{item.shortLabel ?? item.label}</span>
+            <span className="truncate">{item.shortLabel ?? item.label}</span>
           </NavLink>
         ))}
+        {overflow && (
+          <button type="button" onClick={() => setMoreOpen(true)} className={navItemClass(extraActive)}>
+            <span className="text-xl leading-none" aria-hidden>
+              ⋯
+            </span>
+            <span>Altro</span>
+          </button>
+        )}
       </nav>
+
+      {/* Menù «Altro»: le restanti sezioni in una griglia comoda da toccare */}
+      <Modal open={moreOpen} title="Altro" onClose={() => setMoreOpen(false)}>
+        <div className="grid grid-cols-3 gap-2">
+          {extraItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={() => setMoreOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center text-sm font-medium transition",
+                  isActive ? "border-accent bg-sand/40 text-ink" : "border-line text-ink hover:bg-sand/40"
+                )
+              }
+            >
+              <span className="text-2xl leading-none" aria-hidden>
+                {item.icon}
+              </span>
+              <span className="leading-tight">{item.shortLabel ?? item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

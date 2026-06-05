@@ -28,19 +28,27 @@ export const Modal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-navy/40 sm:items-center sm:p-4"
       onClick={onClose}
     >
+      {/* Bottom-sheet su mobile, card centrata su desktop. Header e footer
+          restano fissi, il corpo scorre: i pulsanti non finiscono mai fuori schermo. */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-2xl border border-line bg-card p-5 shadow-soft"
+        className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-2xl border border-line bg-card shadow-soft sm:max-h-[85vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-ink">{title}</h2>
-        <div className="mt-3 text-base text-ink/90">{children}</div>
-        {footer && <div className="mt-5 flex flex-wrap justify-end gap-3">{footer}</div>}
+        <h2 className="shrink-0 border-b border-line px-5 py-4 text-lg font-semibold text-ink">
+          {title}
+        </h2>
+        <div className="flex-1 overflow-y-auto px-5 py-4 text-base text-ink/90">{children}</div>
+        {footer && (
+          <div className="shrink-0 flex flex-wrap justify-end gap-3 border-t border-line px-5 py-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

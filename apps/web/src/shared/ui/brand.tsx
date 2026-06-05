@@ -59,17 +59,9 @@ export const BrandMark = ({
   );
 };
 
-/** Footer con la nota di proprietà e i diritti riservati. */
+/** Nota di proprietà compatta, su una sola riga. */
 export const BrandFooter = ({ className }: { className?: string }) => (
-  <footer
-    className={cn("px-4 py-5 text-center text-xs leading-relaxed text-muted", className)}
-  >
-    <p>
-      © {CURRENT_YEAR} {APP_NAME}
-    </p>
-    <p>
-      App sviluppata da <span className="font-medium text-ink">Alo</span> · Tutti i diritti
-      riservati
-    </p>
+  <footer className={cn("px-4 py-3 text-center text-[11px] leading-snug text-muted", className)}>
+    © {CURRENT_YEAR} {APP_NAME} · Alo · Tutti i diritti riservati
   </footer>
 );
