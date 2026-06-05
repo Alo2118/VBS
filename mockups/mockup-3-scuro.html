@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VBS — Mockup 3 · Scuro raffinato</title>
+<style>
+  :root{
+    --bg:#0a0f1a; --panel:#0f172a; --panel2:#131c2e; --ink:#e8edf6; --muted:#8a98ad;
+    --line:#1e293b; --accent:#38bdf8; --accent-deep:#0ea5e9; --ok:#34d399;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .phone{max-width:460px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;
+    background:radial-gradient(1200px 400px at 50% -120px,rgba(56,189,248,.10),transparent 70%)}
+  .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 16px;background:rgba(10,15,26,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em}
+  .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-deep));display:grid;place-items:center;color:#04141f;font-size:15px}
+  .top-right{display:flex;align-items:center;gap:10px}
+  .pill{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;background:rgba(52,211,153,.15);color:#6ee7b7;border:1px solid rgba(52,211,153,.25)}
+  .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;font-size:18px;position:relative;color:var(--ink)}
+  .badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:999px;background:#f43f5e;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 3px}
+  main{padding:16px;display:flex;flex-direction:column;gap:14px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0}
+  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+  .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .wk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .nav{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:18px;color:var(--ink)}
+  .wk-title{font-weight:600;font-size:14px;color:var(--muted)}
+  .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{border:1px solid var(--line);border-radius:10px;padding:8px 0;text-align:center;background:rgba(255,255,255,.02);cursor:pointer}
+  .day .dow{font-size:11px;color:var(--muted);text-transform:capitalize}
+  .day .num{font-size:17px;font-weight:700}
+  .day .free{font-size:10px;color:var(--ok);font-weight:600}
+  .day.sel{background:linear-gradient(135deg,var(--accent),var(--accent-deep));border-color:transparent;color:#04141f}
+  .day.sel .dow,.day.sel .free{color:rgba(4,20,31,.75)}
+  .day.off{opacity:.35}
+  .court-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .court-head h3{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:3px}
+  .count{font-size:12px;color:var(--muted)}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .slot{border:1px solid var(--line);border-radius:11px;padding:10px 6px;text-align:center;background:rgba(255,255,255,.02);cursor:pointer}
+  .slot .t{font-size:16px;font-weight:700}
+  .slot .p{font-size:12px;color:var(--accent);margin-top:2px;font-weight:600}
+  .slot.free{border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.08)}
+  .slot.busy{opacity:.4;cursor:not-allowed}
+  .slot.busy .p{color:var(--muted)}
+  .tab{position:sticky;bottom:0;display:flex;gap:4px;padding:8px;background:rgba(10,15,26,.9);backdrop-filter:blur(10px);border-top:1px solid var(--line);margin-top:auto}
+  .tab a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;font-weight:600;padding:6px 0;border-radius:10px}
+  .tab a .ti{display:block;font-size:20px}
+  .tab a.on{color:#04141f;background:linear-gradient(135deg,var(--accent),var(--accent-deep))}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="top">
+      <div class="brand"><span class="logo">🏐</span> Vicenza Beach Summer</div>
+      <div class="top-right">
+        <div class="icon-btn">🔔<span class="badge">2</span></div>
+        <span class="pill">Tessera valida</span>
+      </div>
+    </div>
+
+    <main>
+      <div>
+        <h1>Prenota un campo</h1>
+        <p class="sub">Scegli il giorno, poi lo slot libero.</p>
+      </div>
+
+      <section class="panel">
+        <div class="wk-head">
+          <button class="nav">‹</button>
+          <span class="wk-title">9 – 15 giugno</span>
+          <button class="nav">›</button>
+        </div>
+        <div class="days">
+          <div class="day off"><div class="dow">lun</div><div class="num">9</div><div class="free">—</div></div>
+          <div class="day"><div class="dow">mar</div><div class="num">10</div><div class="free">5 liberi</div></div>
+          <div class="day sel"><div class="dow">mer</div><div class="num">11</div><div class="free">3 liberi</div></div>
+          <div class="day"><div class="dow">gio</div><div class="num">12</div><div class="free">6 liberi</div></div>
+          <div class="day"><div class="dow">ven</div><div class="num">13</div><div class="free">2 liberi</div></div>
+          <div class="day"><div class="dow">sab</div><div class="num">14</div><div class="free">8 liberi</div></div>
+          <div class="day"><div class="dow">dom</div><div class="num">15</div><div class="free">4 liberi</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="court-head">
+          <h3><span class="dot" style="background:#facc15"></span> Giallo</h3>
+          <span class="count">4 liberi</span>
+        </div>
+        <div class="slots">
+          <div class="slot free"><div class="t">18:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot free"><div class="t">19:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot busy"><div class="t">20:00</div><div class="p">Occupato</div></div>
+          <div class="slot free"><div class="t">21:00</div><div class="p">€ 10,00</div></div>
+          <div class="slot free"><div class="t">22:00</div><div class="p">€ 10,00</div></div>
+          <div class="slot busy"><div class="t">23:00</div><div class="p">Occupato</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="court-head">
+          <h3><span class="dot" style="background:#e5e7eb"></span> Bianco</h3>
+          <span class="count">2 liberi</span>
+        </div>
+        <div class="slots">
+          <div class="slot free"><div class="t">18:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot busy"><div class="t">19:00</div><div class="p">Occupato</div></div>
+          <div class="slot free"><div class="t">20:00</div><div class="p">€ 8,00</div></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tab">
+      <a class="on" href="#"><span class="ti">🏐</span>Prenota</a>
+      <a href="#"><span class="ti">📅</span>Le mie</a>
+      <a href="#"><span class="ti">👥</span>Soci</a>
+      <a href="#"><span class="ti">🧾</span>Addebiti</a>
+    </nav>
+  </div>
+</body>
+</html>

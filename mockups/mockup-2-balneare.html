@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VBS — Mockup 2 · Balneare e colorato</title>
+<style>
+  :root{
+    --sea:#0ea5e9; --sea-deep:#0284c7; --sun:#f59e0b; --sand:#fef6e0;
+    --ink:#0f2436; --muted:#6b7f93; --line:#f0e6cf; --panel:#ffffff;
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);
+    font:16px/1.5 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(180deg,#fffaf0 0%,var(--sand) 100%);}
+  .phone{max-width:460px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+  .hero{background:linear-gradient(135deg,var(--sea) 0%,#38bdf8 50%,var(--sun) 120%);
+    color:#fff;padding:14px 16px 20px;border-radius:0 0 26px 26px;box-shadow:0 8px 24px rgba(14,165,233,.25)}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em}
+  .logo{width:34px;height:34px;border-radius:11px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:18px}
+  .top-right{display:flex;align-items:center;gap:10px}
+  .pill{font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.22);color:#fff}
+  .icon-btn{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:18px;position:relative;border:0;color:#fff}
+  .badge{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:999px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 3px}
+  .hero h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:16px 0 2px}
+  .hero p{margin:0;color:rgba(255,255,255,.9);font-size:14px}
+  main{padding:16px;display:flex;flex-direction:column;gap:14px;margin-top:-6px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;
+    box-shadow:0 6px 18px rgba(15,36,54,.06)}
+  .wk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .nav{width:38px;height:38px;border-radius:12px;border:0;background:#eef9ff;color:var(--sea-deep);font-size:20px;font-weight:700}
+  .wk-title{font-weight:700;font-size:14px;color:var(--muted)}
+  .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{border-radius:14px;padding:9px 0;text-align:center;background:#f7fbff;cursor:pointer}
+  .day .dow{font-size:11px;color:var(--muted);text-transform:capitalize}
+  .day .num{font-size:17px;font-weight:800}
+  .day .free{font-size:10px;color:#0e9f6e;font-weight:700}
+  .day.sel{background:linear-gradient(135deg,var(--sea),#38bdf8);color:#fff;box-shadow:0 6px 14px rgba(14,165,233,.35)}
+  .day.sel .dow,.day.sel .free{color:rgba(255,255,255,.9)}
+  .day.off{opacity:.4}
+  .court h3{margin:0 0 12px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
+  .chip{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:14px}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .slot{border-radius:14px;padding:11px 6px;text-align:center;background:#f3fbff;border:1.5px solid #d6efff;cursor:pointer}
+  .slot .t{font-size:16px;font-weight:800;color:var(--sea-deep)}
+  .slot .p{font-size:12px;color:var(--muted);margin-top:2px;font-weight:600}
+  .slot.busy{background:#f6f7f8;border-color:#eceef0;opacity:.6;cursor:not-allowed}
+  .slot.busy .t{color:#9aa6b1}
+  .tab{position:sticky;bottom:0;display:flex;gap:4px;padding:8px 8px 10px;background:rgba(255,253,247,.92);backdrop-filter:blur(8px);border-top:1px solid var(--line);margin-top:auto}
+  .tab a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px;font-weight:700;padding:6px 0;border-radius:12px}
+  .tab a .ti{display:block;font-size:21px}
+  .tab a.on{color:#fff;background:linear-gradient(135deg,var(--sea),#38bdf8)}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <header class="hero">
+      <div class="top">
+        <div class="brand"><span class="logo">🏖️</span> Beach Summer</div>
+        <div class="top-right">
+          <button class="icon-btn">🔔<span class="badge">2</span></button>
+          <span class="pill">Tessera valida</span>
+        </div>
+      </div>
+      <h1>Prenota un campo</h1>
+      <p>Mercoledì 11 giugno · 3 campi liberi</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="wk-head">
+          <button class="nav">‹</button>
+          <span class="wk-title">9 – 15 giugno</span>
+          <button class="nav">›</button>
+        </div>
+        <div class="days">
+          <div class="day off"><div class="dow">lun</div><div class="num">9</div><div class="free">—</div></div>
+          <div class="day"><div class="dow">mar</div><div class="num">10</div><div class="free">5</div></div>
+          <div class="day sel"><div class="dow">mer</div><div class="num">11</div><div class="free">3</div></div>
+          <div class="day"><div class="dow">gio</div><div class="num">12</div><div class="free">6</div></div>
+          <div class="day"><div class="dow">ven</div><div class="num">13</div><div class="free">2</div></div>
+          <div class="day"><div class="dow">sab</div><div class="num">14</div><div class="free">8</div></div>
+          <div class="day"><div class="dow">dom</div><div class="num">15</div><div class="free">4</div></div>
+        </div>
+      </section>
+
+      <section class="card court">
+        <h3><span class="chip" style="background:#fef3c7">🟡</span> Giallo</h3>
+        <div class="slots">
+          <div class="slot"><div class="t">18:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot"><div class="t">19:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot busy"><div class="t">20:00</div><div class="p">Occupato</div></div>
+          <div class="slot"><div class="t">21:00</div><div class="p">€ 10,00</div></div>
+          <div class="slot"><div class="t">22:00</div><div class="p">€ 10,00</div></div>
+          <div class="slot busy"><div class="t">23:00</div><div class="p">Occupato</div></div>
+        </div>
+      </section>
+
+      <section class="card court">
+        <h3><span class="chip" style="background:#f1f5f9">⚪</span> Bianco</h3>
+        <div class="slots">
+          <div class="slot"><div class="t">18:00</div><div class="p">€ 8,00</div></div>
+          <div class="slot busy"><div class="t">19:00</div><div class="p">Occupato</div></div>
+          <div class="slot"><div class="t">20:00</div><div class="p">€ 8,00</div></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tab">
+      <a class="on" href="#"><span class="ti">🏐</span>Prenota</a>
+      <a href="#"><span class="ti">📅</span>Le mie</a>
+      <a href="#"><span class="ti">👥</span>Soci</a>
+      <a href="#"><span class="ti">🧾</span>Addebiti</a>
+    </nav>
+  </div>
+</body>
+</html>
