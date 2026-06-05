@@ -146,7 +146,7 @@ export const RosterModal = ({
             {players.map((p) => (
               <li
                 key={p.memberId}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-lg border border-line bg-sand/30 px-3 py-2"
               >
                 <span className="text-base">
                   {p.fullName}
@@ -187,7 +187,7 @@ export const RosterModal = ({
                         type="button"
                         onClick={() => onAdd(m)}
                         disabled={busy}
-                        className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-left text-base hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        className="flex w-full items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-left text-base hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         <span>
                           {m.fullName}
@@ -213,5 +213,5 @@ export const RosterModal = ({
 
 const cnBox = (ok: boolean): string =>
   ok
-    ? "rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-emerald-200"
-    : "rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-amber-100";
+    ? "rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-emerald-800"
+    : "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-800";

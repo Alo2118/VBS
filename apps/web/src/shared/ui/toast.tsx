@@ -30,10 +30,10 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
             key={t.id}
             role="alert"
             className={cn(
-              "rounded-xl border px-4 py-3 text-base font-medium shadow-lg",
-              t.tone === "success" && "border-emerald-500/40 bg-emerald-500/15 text-emerald-200",
-              t.tone === "error" && "border-red-500/40 bg-red-500/15 text-red-200",
-              t.tone === "info" && "border-sky-500/40 bg-sky-500/15 text-sky-200"
+              "rounded-xl border px-4 py-3 text-base font-medium shadow-soft",
+              t.tone === "success" && "border-emerald-300 bg-emerald-50 text-emerald-800",
+              t.tone === "error" && "border-red-300 bg-red-50 text-red-800",
+              t.tone === "info" && "border-sky-300 bg-sky-50 text-sky-800"
             )}
           >
             {t.message}

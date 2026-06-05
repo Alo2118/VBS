@@ -119,7 +119,7 @@ export const MyBookingsPage = () => {
               </div>
 
               {upcoming && (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
                   <p className="text-base">
                     {b.players} {b.players === 1 ? "giocatore" : "giocatori"}
                     {share !== null && (

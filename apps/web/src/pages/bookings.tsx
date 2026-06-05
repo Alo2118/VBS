@@ -179,10 +179,10 @@ export const BookingsPage = () => {
                   "flex flex-col items-center rounded-xl border px-1 py-2 transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                   isSelected
-                    ? "border-accent bg-accent text-slate-900"
+                    ? "border-transparent bg-brand-gradient text-white shadow-soft"
                     : isPast
-                      ? "cursor-not-allowed border-slate-800 bg-slate-900/60 opacity-50"
-                      : "border-slate-700 bg-slate-900/60 hover:bg-slate-800"
+                      ? "cursor-not-allowed border-line bg-white opacity-50"
+                      : "border-line bg-white hover:bg-sand/40"
                 )}
               >
                 <span className="text-xs font-medium capitalize">{formatWeekdayShort(d)}</span>
@@ -191,7 +191,7 @@ export const BookingsPage = () => {
                   <span
                     className={cn(
                       "mt-0.5 text-[0.7rem] font-medium",
-                      isSelected ? "text-slate-900/80" : free > 0 ? "text-emerald-400" : "text-slate-500"
+                      isSelected ? "text-white/90" : free > 0 ? "text-emerald-600" : "text-muted"
                     )}
                   >
                     {free > 0 ? `${free} liberi` : "—"}
@@ -229,8 +229,8 @@ export const BookingsPage = () => {
                       "flex flex-col items-center rounded-xl border px-3 py-3 text-center transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       free && canBook
-                        ? "border-accent/50 bg-accent/10 hover:bg-accent/20"
-                        : "cursor-not-allowed border-slate-800 bg-slate-900/60 opacity-60"
+                        ? "border-sea/40 bg-accent-soft hover:bg-sea/15"
+                        : "cursor-not-allowed border-line bg-sand/30 opacity-60"
                     )}
                   >
                     <span className="text-lg font-semibold">{formatTime(slot.startAt)}</span>
@@ -284,7 +284,7 @@ export const BookingsPage = () => {
 
             {/* Prenotazione fissa (solo staff) */}
             {isStaff && (
-              <div className="mt-3 space-y-2 border-t border-slate-800 pt-3">
+              <div className="mt-3 space-y-2 border-t border-line pt-3">
                 <label className="flex items-center gap-2 text-base">
                   <input
                     type="checkbox"

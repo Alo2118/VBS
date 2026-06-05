@@ -3,16 +3,22 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
-/* Accessibilità over 50 (PRD §2.3/§10): testo base più grande e leggibile,
-   target tattili comodi, focus sempre visibile. */
+/* Tema chiaro "balneare": sfondo sabbia, testo navy. */
 html {
   font-size: 18px;
   line-height: 1.5;
 }
 
+body {
+  background-color: theme("colors.surface");
+  color: theme("colors.ink");
+}
+
+/* Accessibilità over 50 (PRD §2.3/§10): target tattili comodi,
+   focus sempre visibile. */
 button,
 a,
 [role="button"] {

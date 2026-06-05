@@ -15,7 +15,7 @@ export const MembershipBanner = () => {
   return (
     <div
       role="alert"
-      className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-3 text-base text-amber-100"
+      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-base text-amber-800"
     >
       {messages[profile.membershipStatus] ?? "Tessera non valida: non puoi prenotare."}
     </div>

@@ -17,7 +17,7 @@ const formatWhen = (iso: string): string =>
     minute: "2-digit"
   });
 
-export const NotificationBell = () => {
+export const NotificationBell = ({ onDark = false }: { onDark?: boolean }) => {
   const { profile } = useAuth();
   const notify = useToast();
   const navigate = useNavigate();
@@ -114,7 +114,10 @@ export const NotificationBell = () => {
         type="button"
         aria-label="Avvisi"
         onClick={() => (open ? setOpen(false) : void openPanel())}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-100 hover:bg-slate-800"
+        className={cn(
+          "relative flex h-9 w-9 items-center justify-center rounded-lg",
+          onDark ? "text-white hover:bg-white/20" : "text-ink hover:bg-sand/50"
+        )}
       >
         <span className="text-xl leading-none" aria-hidden>
           🔔
@@ -129,9 +132,9 @@ export const NotificationBell = () => {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
-              <span className="text-sm font-semibold text-slate-100">Avvisi</span>
+          <div className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-card shadow-soft">
+            <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+              <span className="text-sm font-semibold text-ink">Avvisi</span>
               {pushRow()}
             </div>
             <div className="max-h-96 overflow-y-auto">
@@ -154,13 +157,13 @@ export const NotificationBell = () => {
                           : undefined
                       }
                       className={cn(
-                        "border-b border-slate-800/60 px-4 py-3",
-                        !n.readAt && "bg-slate-800/40",
-                        url && "cursor-pointer hover:bg-slate-800"
+                        "border-b border-line px-4 py-3",
+                        !n.readAt && "bg-accent-soft",
+                        url && "cursor-pointer hover:bg-sand/40"
                       )}
                     >
-                      <p className="text-sm font-medium text-slate-100">{n.title}</p>
-                      <p className="mt-0.5 text-sm text-slate-300">{n.body}</p>
+                      <p className="text-sm font-medium text-ink">{n.title}</p>
+                      <p className="mt-0.5 text-sm text-muted">{n.body}</p>
                       <p className="mt-1 text-xs text-muted">{formatWhen(n.createdAt)}</p>
                     </div>
                   );

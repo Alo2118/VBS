@@ -15,46 +15,50 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const valid = profile?.membershipStatus === "VALID";
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      {/* Barra superiore (solo mobile): identità app, stato tessera, uscita */}
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 backdrop-blur md:hidden">
-        <BrandMark size="md" className="min-w-0" />
-        <div className="flex shrink-0 items-center gap-2">
-          {profile && <NotificationBell />}
-          {profile && (
+    <div className="min-h-screen bg-surface">
+      {/* Testata (solo mobile): gradiente mare→sole, identità, stato, uscita */}
+      <header className="sticky top-0 z-20 bg-brand-gradient px-4 py-2.5 shadow-hero md:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <BrandMark size="md" tone="light" className="min-w-0" />
+          <div className="flex shrink-0 items-center gap-2">
+            {profile && <NotificationBell onDark />}
+            {profile && (
+              <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+                Esci
+              </Button>
+            )}
+          </div>
+        </div>
+        {profile && (
+          <div className="mt-2">
             <StatusPill
               label={valid ? "Tessera valida" : "Tessera non valida"}
               tone={valid ? "success" : "warning"}
             />
-          )}
-          {profile && (
-            <Button variant="secondary" size="sm" onClick={() => void signOut()}>
-              Esci
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-3 py-4 md:flex-row md:gap-6 md:px-6 md:py-6">
         {/* Sidebar (solo desktop) */}
         <aside className="hidden shrink-0 md:block md:w-64">
-          <div className="sticky top-6 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div className="sticky top-6 rounded-2xl border border-line bg-card p-4 shadow-soft">
             <div className="flex items-center justify-between gap-2">
               <BrandMark size="md" />
               {profile && <NotificationBell />}
             </div>
 
-            <nav className="mt-5 flex flex-col gap-2">
+            <nav className="mt-5 flex flex-col gap-1.5">
               {items.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-2.5 text-base font-medium transition",
+                      "flex items-center gap-3 rounded-xl px-4 py-2.5 text-base font-medium transition",
                       isActive
-                        ? "bg-accent text-slate-900"
-                        : "text-slate-100 hover:bg-slate-800"
+                        ? "bg-brand-gradient text-white shadow-soft"
+                        : "text-ink hover:bg-sand/40"
                     )
                   }
                 >
@@ -65,8 +69,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             </nav>
 
             {profile && (
-              <div className="mt-6 border-t border-slate-800 pt-4">
-                <p className="text-sm font-medium text-slate-100">
+              <div className="mt-6 border-t border-line pt-4">
+                <p className="text-sm font-medium text-ink">
                   {profile.fullName || profile.email}
                 </p>
                 <div className="mt-2">
@@ -91,15 +95,15 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Barra di navigazione inferiore (solo mobile): target ampi, scrollabile */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-2 py-1.5 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-line bg-card/95 px-2 py-1.5 backdrop-blur md:hidden">
         {items.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
               cn(
-                "flex min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-xs font-medium transition",
-                isActive ? "bg-accent text-slate-900" : "text-slate-300 hover:bg-slate-800"
+                "flex min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-xs font-medium transition",
+                isActive ? "bg-brand-gradient text-white shadow-soft" : "text-muted hover:bg-sand/40"
               )
             }
           >

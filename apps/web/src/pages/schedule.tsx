@@ -153,7 +153,7 @@ const OpeningRulesSection = ({
         {rules.map((r) => (
           <div
             key={r.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-sand/30 px-4 py-3"
           >
             <span className="text-base">
               <strong>{WEEKDAYS[r.weekday]}</strong> · {r.openTime.slice(0, 5)}–
@@ -281,7 +281,7 @@ const ClosuresSection = ({
         {closures.map((c) => (
           <div
             key={c.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-sand/30 px-4 py-3"
           >
             <span className="text-base capitalize">
               {courtName(c.courtId)} · {formatDateTime(c.startAt)} → {formatDateTime(c.endAt)}

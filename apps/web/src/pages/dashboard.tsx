@@ -18,10 +18,10 @@ import { formatEur } from "@/shared/utils/money";
 type Tone = "neutral" | "info" | "warning" | "danger";
 
 const toneClasses: Record<Tone, string> = {
-  neutral: "border-slate-800",
-  info: "border-sky-500/40",
-  warning: "border-amber-500/40",
-  danger: "border-red-500/40"
+  neutral: "border-line",
+  info: "border-sky-300",
+  warning: "border-amber-300",
+  danger: "border-red-300"
 };
 
 const Stat = ({
@@ -40,7 +40,7 @@ const Stat = ({
   <Link
     to={to}
     className={cn(
-      "block rounded-2xl border bg-card/80 p-5 shadow-lg transition hover:bg-slate-800/60",
+      "block rounded-2xl border bg-card p-5 shadow-soft transition hover:bg-sand/40",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
       toneClasses[tone]
     )}
@@ -142,7 +142,7 @@ export const DashboardPage = () => {
                   <button
                     type="button"
                     onClick={() => setDetail(b)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-left transition hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">

@@ -12,14 +12,14 @@ export const Input = ({ label, className, id, ...props }: InputProps) => {
   const inputId = id ?? autoId;
   return (
     <div className="space-y-1.5">
-      <label htmlFor={inputId} className="block text-base font-medium text-slate-100">
+      <label htmlFor={inputId} className="block text-base font-medium text-ink">
         {label}
       </label>
       <input
         id={inputId}
         className={cn(
-          "w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-base text-slate-100",
-          "placeholder:text-slate-500",
+          "w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink",
+          "placeholder:text-muted/70",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           className
         )}

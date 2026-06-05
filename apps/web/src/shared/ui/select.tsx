@@ -15,13 +15,13 @@ export const Select = ({ label, options, className, id, ...props }: SelectProps)
   const selectId = id ?? autoId;
   return (
     <div className="space-y-1.5">
-      <label htmlFor={selectId} className="block text-base font-medium text-slate-100">
+      <label htmlFor={selectId} className="block text-base font-medium text-ink">
         {label}
       </label>
       <select
         id={selectId}
         className={cn(
-          "w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-base text-slate-100",
+          "w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           className
         )}

@@ -42,10 +42,10 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-sand-fade p-4">
       <Card className="w-full max-w-md overflow-hidden p-0">
         <div className="bg-brand-gradient px-6 py-7">
-          <BrandMark size="lg" />
+          <BrandMark size="lg" tone="light" />
         </div>
         <div className="p-6">
           <h1 className="text-xl font-semibold">

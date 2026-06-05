@@ -138,15 +138,15 @@ export const PricingPage = () => {
                       "flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       active
-                        ? "border-accent bg-accent/15"
-                        : "border-slate-800 bg-slate-900/50 hover:bg-slate-800/60"
+                        ? "border-sea bg-accent-soft"
+                        : "border-line bg-white hover:bg-sand/40"
                     )}
                   >
                     <span className="flex items-center gap-3">
                       <span
                         className={cn(
                           "flex h-6 w-6 items-center justify-center rounded border",
-                          active ? "border-accent bg-accent text-slate-900" : "border-slate-600"
+                          active ? "border-transparent bg-brand-gradient text-white" : "border-line"
                         )}
                         aria-hidden
                       >

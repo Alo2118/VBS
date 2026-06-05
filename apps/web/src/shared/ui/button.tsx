@@ -6,9 +6,9 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-slate-900 hover:bg-sky-300",
-  secondary: "bg-slate-700 text-slate-100 hover:bg-slate-600",
-  ghost: "bg-transparent text-slate-100 hover:bg-slate-800",
+  primary: "bg-gradient-to-br from-sea to-sea-deep text-white shadow-soft hover:brightness-105",
+  secondary: "border border-line bg-white text-ink hover:bg-sand/40",
+  ghost: "bg-transparent text-ink hover:bg-sand/40",
   danger: "bg-red-500 text-white hover:bg-red-400"
 };
 
@@ -17,6 +17,8 @@ const sizeClasses: Record<ButtonSize, string> = {
   md: "px-4 py-2 text-sm",
   lg: "px-5 py-2.5 text-base"
 };
+
+const baseClasses = "rounded-xl font-semibold transition";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -31,7 +33,7 @@ export const Button = ({
 }: ButtonProps) => (
   <button
     className={cn(
-      "rounded-lg font-semibold transition",
+      baseClasses,
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
       variantClasses[variant],
       sizeClasses[size],
