@@ -111,7 +111,7 @@ export const MyBookingsPage = () => {
                 <div>
                   <p className="text-lg font-semibold capitalize">{formatDateTime(b.startAt)}</p>
                   <p className="text-base text-muted">
-                    Fine {formatTime(b.endAt)} · campo {formatEur(b.price)}
+                    Fine {formatTime(b.endAt)}
                     {b.seriesId ? " · fissa" : ""}
                   </p>
                 </div>

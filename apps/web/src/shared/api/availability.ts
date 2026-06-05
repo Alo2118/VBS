@@ -16,7 +16,8 @@ export const fetchAvailability = async (
     startAt: row.start_at as string,
     endAt: row.end_at as string,
     price: Number(row.price),
-    status: row.status as AvailabilitySlot["status"]
+    status: row.status as AvailabilitySlot["status"],
+    booker: (row.booker as string | null) ?? undefined
   }));
 };
 
@@ -36,6 +37,7 @@ export const fetchWeekAvailability = async (
     startAt: row.start_at as string,
     endAt: row.end_at as string,
     price: Number(row.price),
-    status: row.status as AvailabilitySlot["status"]
+    status: row.status as AvailabilitySlot["status"],
+    booker: (row.booker as string | null) ?? undefined
   }));
 };

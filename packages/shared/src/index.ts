@@ -176,6 +176,8 @@ export interface AvailabilitySlot {
   endAt: string;
   price: number;
   status: SlotStatus;
+  /** Nome del responsabile della prenotazione (solo per gli slot occupati). */
+  booker?: string;
 }
 
 /** Slot della vista settimanale: come AvailabilitySlot ma con il giorno (YYYY-MM-DD). */

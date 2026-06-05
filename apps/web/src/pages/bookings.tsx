@@ -26,7 +26,6 @@ import {
   toIsoDate,
   weekDays
 } from "@/shared/utils/date";
-import { formatEur } from "@/shared/utils/money";
 
 export const BookingsPage = () => {
   const notify = useToast();
@@ -234,8 +233,14 @@ export const BookingsPage = () => {
                     )}
                   >
                     <span className="text-lg font-semibold">{formatTime(slot.startAt)}</span>
-                    <span className="mt-1 text-sm text-muted">
-                      {free ? formatEur(slot.price) : "Occupato"}
+                    <span
+                      className={cn(
+                        "mt-1 w-full truncate text-sm",
+                        free ? "text-emerald-600" : "text-muted"
+                      )}
+                      title={free ? undefined : slot.booker}
+                    >
+                      {free ? "Libero" : (slot.booker ?? "Occupato")}
                     </span>
                   </button>
                 );
@@ -269,10 +274,9 @@ export const BookingsPage = () => {
               label="Orario"
               value={`${formatTime(selected.startAt)}–${formatTime(selected.endAt)}`}
             />
-            <Row label="Costo campo" value={formatEur(selected.price)} strong />
             <p className="pt-1 text-sm text-muted">
-              Il costo si divide tra i giocatori (minimo {policy?.minPlayers ?? 4} soci con tessera
-              valida). Aggiungi i giocatori dopo, da «Le mie prenotazioni».
+              Aggiungi i giocatori (minimo {policy?.minPlayers ?? 4} soci con tessera valida) da
+              «Le mie prenotazioni».
             </p>
             <p className="text-sm text-muted">
               {cancellationNote}
