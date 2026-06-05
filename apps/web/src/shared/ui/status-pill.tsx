@@ -1,6 +1,6 @@
 import { cn } from "./cn";
 
-type StatusTone = "success" | "warning" | "danger" | "info";
+export type StatusTone = "success" | "warning" | "danger" | "info";
 
 const toneClasses: Record<StatusTone, string> = {
   success: "bg-emerald-100 text-emerald-700",

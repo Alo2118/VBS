@@ -14,7 +14,7 @@ import {
   upsertProduct,
   type Product
 } from "@/shared/api/products";
-import { formatEur } from "@/shared/utils/money";
+import { formatEur, parseAmount } from "@/shared/utils/money";
 
 const empty = { name: "", price: "", category: "", active: true, sortOrder: "0" };
 
@@ -125,7 +125,7 @@ const ProductModal = ({
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    const price = Number(form.price.replace(",", "."));
+    const price = parseAmount(form.price);
     if (!form.name.trim()) {
       notify("Indica il nome del prodotto.", "error");
       return;

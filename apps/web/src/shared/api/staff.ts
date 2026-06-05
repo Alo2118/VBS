@@ -1,4 +1,5 @@
 import type { MemberProfile, PriceRule } from "@vbs/shared";
+import type { StatusTone } from "@/shared/ui/status-pill";
 import { supabase, toBusinessError } from "./supabase";
 
 const unwrap = <T>(data: T | null, error: Parameters<typeof toBusinessError>[0]): T => {
@@ -113,6 +114,14 @@ export type DayBooking = {
   status: string;
   price: number;
   players: number;
+};
+
+/** Etichette/toni degli stati prenotazione lato staff (Presenze, dettaglio slot). */
+export const DAY_BOOKING_STATUS_META: Record<string, { label: string; tone: StatusTone }> = {
+  CONFIRMED: { label: "Confermata", tone: "success" },
+  CANCELLED: { label: "Disdetta", tone: "info" },
+  NO_SHOW: { label: "No-show", tone: "danger" },
+  COMPLETED: { label: "Completata", tone: "info" }
 };
 
 const BOOKING_SELECT =

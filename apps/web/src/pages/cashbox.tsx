@@ -21,7 +21,7 @@ import {
   type MemberAccount,
   type PayMethod
 } from "@/shared/api/account";
-import { formatEur } from "@/shared/utils/money";
+import { formatEur, parseAmount } from "@/shared/utils/money";
 
 type Target = { memberId: string; fullName: string; nickname?: string };
 
@@ -158,7 +158,7 @@ const AccountModal = ({
   }, [reload]);
 
   const registerPayment = async () => {
-    const amt = Number(payAmount.replace(",", "."));
+    const amt = parseAmount(payAmount);
     if (!amt || amt <= 0) {
       notify("Inserisci un importo valido.", "error");
       return;
@@ -187,7 +187,7 @@ const AccountModal = ({
   };
 
   const addCharge = async () => {
-    const amt = Number(chargeAmount.replace(",", "."));
+    const amt = parseAmount(chargeAmount);
     if (!amt || amt <= 0) {
       notify("Inserisci un importo valido.", "error");
       return;

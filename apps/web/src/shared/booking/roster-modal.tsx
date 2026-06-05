@@ -6,12 +6,8 @@ import { Modal } from "@/shared/ui/modal";
 import { Spinner } from "@/shared/ui/spinner";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
-import {
-  addPlayer,
-  fetchPlayers,
-  removePlayer,
-  searchValidMembers
-} from "@/shared/api/bookings";
+import { addPlayer, fetchPlayers, removePlayer } from "@/shared/api/bookings";
+import { useMemberSearch } from "@/shared/members/use-member-search";
 import { perPlayerShare } from "@/shared/utils/pricing";
 import { formatEur } from "@/shared/utils/money";
 
@@ -37,9 +33,8 @@ export const RosterModal = ({
   const notify = useToast();
   const [players, setPlayers] = useState<BookingPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<MemberLite[]>([]);
   const [busy, setBusy] = useState(false);
+  const { query, setQuery, results, reset } = useMemberSearch(players.map((p) => p.memberId));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,21 +51,6 @@ export const RosterModal = ({
     void load();
   }, [load]);
 
-  // Ricerca soci validi al variare del testo (con piccolo debounce).
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      setResults([]);
-      return;
-    }
-    const t = setTimeout(() => {
-      searchValidMembers(q)
-        .then(setResults)
-        .catch(() => setResults([]));
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query]);
-
   const refresh = async () => {
     await load();
     onChanged?.();
@@ -80,8 +60,7 @@ export const RosterModal = ({
     setBusy(true);
     try {
       await addPlayer(bookingId, m.id);
-      setQuery("");
-      setResults([]);
+      reset();
       await refresh();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Aggiunta non riuscita.", "error");
@@ -102,7 +81,6 @@ export const RosterModal = ({
     }
   };
 
-  const inRoster = new Set(players.map((p) => p.memberId));
   const count = players.length;
   const share = perPlayerShare({
     players: count,
@@ -179,26 +157,24 @@ export const RosterModal = ({
             />
             {results.length > 0 && (
               <ul className="max-h-44 space-y-1 overflow-y-auto">
-                {results
-                  .filter((m) => !inRoster.has(m.id))
-                  .map((m) => (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        onClick={() => onAdd(m)}
-                        disabled={busy}
-                        className="flex w-full items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-left text-base hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      >
-                        <span>
-                          {m.fullName}
-                          <NicknameTag nickname={m.nickname} className="ml-1" />
-                        </span>
-                        <span aria-hidden className="text-accent">
-                          +
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                {results.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => onAdd(m)}
+                      disabled={busy}
+                      className="flex w-full items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-left text-base hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      <span>
+                        {m.fullName}
+                        <NicknameTag nickname={m.nickname} className="ml-1" />
+                      </span>
+                      <span aria-hidden className="text-accent">
+                        +
+                      </span>
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
             {query.trim().length >= 2 && results.length === 0 && (

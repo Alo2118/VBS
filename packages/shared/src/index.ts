@@ -3,8 +3,6 @@
 
 export type MembershipStatus = "PENDING" | "VALID" | "EXPIRED" | "SUSPENDED";
 export type BookingStatus = "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "COMPLETED";
-export type ChargeType = "LATE_CANCELLATION" | "NO_SHOW";
-export type ChargeStatus = "DUE" | "PAID" | "WAIVED";
 export type PaymentMethod = "CASH" | "SATISPAY" | "WALLET";
 export type CancellationModel = "CALENDAR_DAY_BEFORE" | "ROLLING_HOURS";
 
@@ -139,19 +137,6 @@ export interface MemberLite {
   fullName: string;
   /** Soprannome, mostrato per distinguere gli omonimi. */
   nickname?: string;
-}
-
-export interface Charge {
-  id: string;
-  bookingId: string;
-  memberId: string;
-  type: ChargeType;
-  amount: number;
-  status: ChargeStatus;
-  reason?: string;
-  createdAt: string;
-  settledAt?: string;
-  settledBy?: string;
 }
 
 export interface BookingPolicy {

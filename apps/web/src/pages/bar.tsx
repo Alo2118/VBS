@@ -10,7 +10,7 @@ import { MemberSearch } from "@/shared/members/member-search";
 import type { MemberLite } from "@vbs/shared";
 import { postBarSale, postCharge } from "@/shared/api/account";
 import { fetchProducts, groupByCategory, type Product } from "@/shared/api/products";
-import { formatEur } from "@/shared/utils/money";
+import { formatEur, parseAmount } from "@/shared/utils/money";
 
 export const BarPage = () => {
   const notify = useToast();
@@ -55,7 +55,7 @@ export const BarPage = () => {
     try {
       let amt: number;
       if (freeMode) {
-        amt = Number(amount.replace(",", "."));
+        amt = parseAmount(amount);
         if (!amt || amt <= 0) {
           notify("Inserisci un importo valido.", "error");
           return;

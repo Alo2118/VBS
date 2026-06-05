@@ -14,7 +14,7 @@ import {
   updatePlayerPolicy
 } from "@/shared/api/staff";
 import { fetchBookingPolicy } from "@/shared/api/bookings";
-import { formatEur } from "@/shared/utils/money";
+import { formatEur, parseAmount } from "@/shared/utils/money";
 
 const WEEKDAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
@@ -59,7 +59,7 @@ export const PricingPage = () => {
     });
 
   const parsePrice = (raw: string): number | null => {
-    const n = Number(raw.replace(",", "."));
+    const n = parseAmount(raw);
     return Number.isFinite(n) && n >= 0 ? n : null;
   };
 

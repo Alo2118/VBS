@@ -9,6 +9,13 @@ import { NotificationBell } from "@/shared/ui/notification-bell";
 import { signOut } from "@/shared/api/auth";
 import { useAuth } from "@/shared/auth/auth-context";
 
+const MembershipPill = ({ valid }: { valid: boolean }) => (
+  <StatusPill
+    label={valid ? "Tessera valida" : "Tessera non valida"}
+    tone={valid ? "success" : "warning"}
+  />
+);
+
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const { profile, isStaff, isCashier } = useAuth();
   const canSee = (item: (typeof navigationItems)[number]) =>
@@ -35,10 +42,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         </div>
         {profile && (
           <div className="mt-2">
-            <StatusPill
-              label={valid ? "Tessera valida" : "Tessera non valida"}
-              tone={valid ? "success" : "warning"}
-            />
+            <MembershipPill valid={valid} />
           </div>
         )}
       </header>
@@ -89,10 +93,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                   {profile.fullName || profile.email}
                 </p>
                 <div className="mt-2">
-                  <StatusPill
-                    label={valid ? "Tessera valida" : "Tessera non valida"}
-                    tone={valid ? "success" : "warning"}
-                  />
+                  <MembershipPill valid={valid} />
                 </div>
                 <Button variant="ghost" className="mt-3 w-full" onClick={() => void signOut()}>
                   Esci

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import { Input } from "@/shared/ui/input";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
-import { searchValidMembers } from "@/shared/api/bookings";
+import { useMemberSearch } from "./use-member-search";
 import type { MemberLite } from "@vbs/shared";
 
 /**
@@ -19,29 +18,11 @@ export const MemberSearch = ({
   placeholder?: string;
   excludeIds?: string[];
 }) => {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<MemberLite[]>([]);
-
-  useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    let alive = true;
-    void searchValidMembers(query)
-      .then((r) => alive && setResults(r))
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [query]);
-
-  const visible = excludeIds ? results.filter((m) => !excludeIds.includes(m.id)) : results;
+  const { query, setQuery, results, reset } = useMemberSearch(excludeIds);
 
   const pick = (m: MemberLite) => {
     onSelect(m);
-    setQuery("");
-    setResults([]);
+    reset();
   };
 
   return (
@@ -53,9 +34,9 @@ export const MemberSearch = ({
         placeholder={placeholder}
         autoComplete="off"
       />
-      {visible.length > 0 && (
+      {results.length > 0 && (
         <ul className="divide-y divide-line">
-          {visible.map((m) => (
+          {results.map((m) => (
             <li key={m.id}>
               <button
                 type="button"

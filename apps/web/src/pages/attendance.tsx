@@ -7,18 +7,11 @@ import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
-import { fetchDayBookings } from "@/shared/api/staff";
+import { DAY_BOOKING_STATUS_META, fetchDayBookings } from "@/shared/api/staff";
 import { fetchBookingPolicy } from "@/shared/api/bookings";
 import type { DayBooking } from "@/shared/api/staff";
 import { BookingActions } from "@/shared/booking/booking-actions";
 import { addDays, formatDay, formatTime, toIsoDate } from "@/shared/utils/date";
-
-const statusMeta: Record<string, { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
-  CONFIRMED: { label: "Confermata", tone: "success" },
-  CANCELLED: { label: "Disdetta", tone: "info" },
-  NO_SHOW: { label: "No-show", tone: "danger" },
-  COMPLETED: { label: "Completata", tone: "info" }
-};
 
 export const AttendancePage = () => {
   const notify = useToast();
@@ -89,7 +82,7 @@ export const AttendancePage = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <StatusPill {...(statusMeta[b.status] ?? { label: b.status, tone: "info" })} />
+              <StatusPill {...(DAY_BOOKING_STATUS_META[b.status] ?? { label: b.status, tone: "info" })} />
               <BookingActions booking={b} onChanged={() => load(day)} />
             </div>
           </Card>

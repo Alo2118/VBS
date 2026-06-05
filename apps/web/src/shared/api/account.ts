@@ -30,7 +30,7 @@ export interface MemberAccount {
 }
 
 /** I tipi che il socio "deve" (DARE) vs quelli che entrano (AVERE). */
-export const isDebit = (kind: LedgerKind): boolean =>
+const isDebit = (kind: LedgerKind): boolean =>
   kind === "COURT" || kind === "BAR" || kind === "PENALTY";
 
 /** Importo con segno per la visualizzazione (negativo = il socio deve). */

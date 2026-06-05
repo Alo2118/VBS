@@ -2,17 +2,10 @@ import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
-import type { DayBooking } from "@/shared/api/staff";
+import { DAY_BOOKING_STATUS_META, type DayBooking } from "@/shared/api/staff";
 import { BookingActions } from "./booking-actions";
 import { formatDateTime, formatTime } from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
-
-const statusMeta: Record<string, { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
-  CONFIRMED: { label: "Confermata", tone: "success" },
-  CANCELLED: { label: "Disdetta", tone: "info" },
-  NO_SHOW: { label: "No-show", tone: "danger" },
-  COMPLETED: { label: "Completata", tone: "info" }
-};
 
 /** Dettaglio di una prenotazione con le azioni staff (es. liberare il campo). */
 export const BookingDetailModal = ({
@@ -60,7 +53,7 @@ export const BookingDetailModal = ({
       <div className="flex items-center justify-between gap-3">
         <dt className="text-muted">Stato</dt>
         <dd>
-          <StatusPill {...(statusMeta[booking.status] ?? { label: booking.status, tone: "info" })} />
+          <StatusPill {...(DAY_BOOKING_STATUS_META[booking.status] ?? { label: booking.status, tone: "info" })} />
         </dd>
       </div>
     </dl>
