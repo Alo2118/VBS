@@ -50,7 +50,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       {/* Testata (solo mobile): gradiente mare→sole, identità, stato, uscita */}
       <header className="sticky top-0 z-20 bg-brand-gradient px-4 py-2.5 shadow-hero md:hidden">
         <div className="flex items-center justify-between gap-3">
-          <BrandMark size="md" tone="light" className="min-w-0" />
+          <BrandMark size="md" tone="light" showSubtitle={false} className="min-w-0" />
           <div className="flex shrink-0 items-center gap-2">
             {profile && <NotificationBell onDark />}
             {profile && (

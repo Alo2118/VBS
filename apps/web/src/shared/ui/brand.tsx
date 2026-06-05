@@ -16,10 +16,13 @@ const LOGO_SRC = `${import.meta.env.BASE_URL}logo.jpg`;
 export const BrandMark = ({
   size = "md",
   tone = "dark",
+  showSubtitle = true,
   className
 }: {
   size?: "md" | "lg";
   tone?: "dark" | "light";
+  /** Mostra il sottotitolo descrittivo (nascosto su mobile, dove è ridondante). */
+  showSubtitle?: boolean;
   className?: string;
 }) => {
   const lg = size === "lg";
@@ -38,22 +41,24 @@ export const BrandMark = ({
       <span className="min-w-0">
         <span
           className={cn(
-            "block truncate font-semibold leading-tight",
+            "block font-semibold leading-tight",
             onLight ? "text-ink" : "text-white",
             lg ? "text-2xl" : "text-lg"
           )}
         >
           {APP_NAME}
         </span>
-        <span
-          className={cn(
-            "block",
-            onLight ? "text-muted" : "text-white/80",
-            lg ? "text-base" : "text-xs"
-          )}
-        >
-          Prenotazione campi beach volley
-        </span>
+        {showSubtitle && (
+          <span
+            className={cn(
+              "block",
+              onLight ? "text-muted" : "text-white/80",
+              lg ? "text-base" : "text-xs"
+            )}
+          >
+            Prenotazione campi beach volley
+          </span>
+        )}
       </span>
     </div>
   );
