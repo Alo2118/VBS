@@ -136,7 +136,7 @@ export const BookingsPage = () => {
       <MembershipBanner />
 
       {/* Passo 1: scegli il giorno nella settimana */}
-      <Card className="space-y-4">
+      <Card className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <Button
             variant="secondary"
@@ -175,7 +175,7 @@ export const BookingsPage = () => {
                 aria-label={formatDay(d)}
                 aria-pressed={isSelected}
                 className={cn(
-                  "flex flex-col items-center rounded-xl border px-1 py-2 transition",
+                  "flex flex-col items-center rounded-xl border px-1 py-1.5 transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                   isSelected
                     ? "border-transparent bg-brand-gradient text-white shadow-soft"
@@ -215,7 +215,7 @@ export const BookingsPage = () => {
         byCourt.map((court) => (
           <Card key={court.name}>
             <h3 className="text-lg font-semibold">{court.name}</h3>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               {court.slots.map((slot) => {
                 const free = slot.status === "FREE";
                 return (
@@ -225,7 +225,7 @@ export const BookingsPage = () => {
                     disabled={!free || !canBook}
                     onClick={() => setSelected(slot)}
                     className={cn(
-                      "flex flex-col items-center rounded-xl border px-3 py-3 text-center transition",
+                      "flex flex-col items-center rounded-xl border px-3 py-2.5 text-center transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       free && canBook
                         ? "border-sea/40 bg-accent-soft hover:bg-sea/15"

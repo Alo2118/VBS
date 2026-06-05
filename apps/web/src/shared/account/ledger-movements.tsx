@@ -27,16 +27,21 @@ export const LedgerMovements = ({
     <ul className="divide-y divide-line">
       {rows.map((e) => {
         const signed = signedAmount(e);
+        const kindLabel = LEDGER_KIND_LABELS[e.kind];
+        // La categoria nel sottotitolo serve solo se il titolo è una descrizione
+        // (altrimenti il titolo è già la categoria: niente "Bar · Bar").
+        const meta = [
+          e.description ? kindLabel : null,
+          e.method ? PAY_METHOD_LABELS[e.method] : null,
+          formatDateTime(e.createdAt)
+        ]
+          .filter(Boolean)
+          .join(" · ");
         return (
-          <li key={e.id} className="flex items-center justify-between gap-3 py-3">
+          <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
             <div className="min-w-0">
-              <p className="truncate text-base font-medium">
-                {e.description || LEDGER_KIND_LABELS[e.kind]}
-              </p>
-              <p className="text-sm text-muted">
-                {LEDGER_KIND_LABELS[e.kind]}
-                {e.method ? ` · ${PAY_METHOD_LABELS[e.method]}` : ""} · {formatDateTime(e.createdAt)}
-              </p>
+              <p className="truncate text-base font-medium">{e.description || kindLabel}</p>
+              <p className="text-sm text-muted">{meta}</p>
             </div>
             <span
               className={cn(
