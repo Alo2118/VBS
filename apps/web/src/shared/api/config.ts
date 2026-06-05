@@ -25,20 +25,23 @@ export const fetchOpeningRules = async (): Promise<OpeningRule[]> => {
   }));
 };
 
-export const createOpeningRule = async (input: {
+/** Crea la stessa fascia di apertura su più giorni della settimana in un colpo. */
+export const createOpeningRules = async (input: {
   courtId?: string;
-  weekday: number;
+  weekdays: number[];
   openTime: string;
   closeTime: string;
   slotDurationMinutes: number;
 }): Promise<void> => {
-  const { error } = await supabase.from("opening_rules").insert({
+  if (input.weekdays.length === 0) return;
+  const rows = input.weekdays.map((weekday) => ({
     court_id: input.courtId ?? null,
-    weekday: input.weekday,
+    weekday,
     open_time: input.openTime,
     close_time: input.closeTime,
     slot_duration_minutes: input.slotDurationMinutes
-  });
+  }));
+  const { error } = await supabase.from("opening_rules").insert(rows);
   guard(error);
 };
 
