@@ -1,6 +1,7 @@
 import type { MemberProfile, PriceRule } from "@vbs/shared";
 import type { StatusTone } from "@/shared/ui/status-pill";
 import { supabase, toBusinessError } from "./supabase";
+import { romeDayRangeUtc } from "@/shared/utils/date";
 
 const unwrap = <T>(data: T | null, error: Parameters<typeof toBusinessError>[0]): T => {
   const err = toBusinessError(error);
@@ -144,11 +145,14 @@ const mapDayBooking = (r: Record<string, unknown>): DayBooking => {
 };
 
 export const fetchDayBookings = async (isoDate: string): Promise<DayBooking[]> => {
+  // Estremi calcolati come istanti UTC della giornata locale (Europe/Rome):
+  // evita che gli slot vicini alla mezzanotte finiscano nel giorno sbagliato.
+  const { start, endExclusive } = romeDayRangeUtc(isoDate);
   const { data, error } = await supabase
     .from("bookings")
     .select(BOOKING_SELECT)
-    .gte("start_at", `${isoDate}T00:00:00`)
-    .lte("start_at", `${isoDate}T23:59:59`)
+    .gte("start_at", start)
+    .lt("start_at", endExclusive)
     .order("start_at");
   return (unwrap(data, error) ?? []).map(mapDayBooking);
 };

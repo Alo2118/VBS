@@ -16,6 +16,53 @@ export const addDays = (date: Date, days: number): Date => {
   return next;
 };
 
+/** Offset (in minuti) di Europe/Rome per un dato istante UTC (gestisce l'ora legale). */
+const romeOffsetMinutes = (utc: Date): number => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  })
+    .formatToParts(utc)
+    .reduce<Record<string, string>>((acc, p) => {
+      acc[p.type] = p.value;
+      return acc;
+    }, {});
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour === "24" ? "0" : parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return (asUtc - utc.getTime()) / 60000;
+};
+
+/** Istante UTC (ISO) della mezzanotte locale (Europe/Rome) per una data YYYY-MM-DD. */
+const romeMidnightUtc = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const guess = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+  const offset = romeOffsetMinutes(guess);
+  return new Date(guess.getTime() - offset * 60_000).toISOString();
+};
+
+/**
+ * Intervallo UTC semiaperto [inizio, inizioGiornoDopo) corrispondente alla
+ * giornata locale (Europe/Rome) indicata da `isoDate` (YYYY-MM-DD). Da usare
+ * per filtrare colonne `timestamptz` senza scivolamenti di giorno.
+ */
+export const romeDayRangeUtc = (isoDate: string): { start: string; endExclusive: string } => {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const nextIso = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  return { start: romeMidnightUtc(isoDate), endExclusive: romeMidnightUtc(nextIso) };
+};
+
 export const isSameDay = (a: Date, b: Date): boolean =>
   toIsoDate(a) === toIsoDate(b);
 
