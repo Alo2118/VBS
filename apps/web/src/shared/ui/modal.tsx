@@ -35,12 +35,12 @@ export const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+        className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-semibold text-slate-100">{title}</h2>
-        <div className="mt-4 text-base text-slate-200">{children}</div>
-        {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
+        <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+        <div className="mt-3 text-base text-slate-200">{children}</div>
+        {footer && <div className="mt-5 flex flex-wrap justify-end gap-3">{footer}</div>}
       </div>
     </div>
   );

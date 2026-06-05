@@ -14,13 +14,13 @@ export const Page = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <section className={cn("space-y-6", className)}>
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h2 className="text-2xl font-semibold">{title}</h2>
-        {description && <p className="text-base text-muted">{description}</p>}
+  <section className={cn("space-y-4", className)}>
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-0.5">
+        <h2 className="text-xl font-semibold sm:text-2xl">{title}</h2>
+        {description && <p className="text-sm text-muted sm:text-base">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>
     {children}
   </section>
