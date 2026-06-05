@@ -13,5 +13,6 @@
     "types": ["vite/client"],
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/sw.ts"]
 }

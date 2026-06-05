@@ -379,4 +379,49 @@ begin
   raise notice 'TEST 17 OK: tolleranza disdetta (entro gratis, oltre con penale)';
 end $$;
 
+-- 18) Annullamento in blocco per chiusura (pioggia) + notifiche ai giocatori
+do $$
+declare
+  v_court uuid; v_start timestamptz; v_b bookings%rowtype;
+  v_closure uuid; v_n int; v_status booking_status; v_reason text;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name limit 1;            -- 'Bianco'
+  v_start := ((current_date + 10)::timestamp + time '14:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  -- aggiungo un secondo socio nella rosa
+  insert into booking_players (booking_id, member_id, added_by)
+  values (v_b.id, '33333333-3333-3333-3333-333333333333',
+          '22222222-2222-2222-2222-222222222222');
+
+  -- chiusura del campo sulla fascia dello slot
+  insert into closures (court_id, start_at, end_at, reason)
+  values (v_court, v_start - interval '1 hour', v_start + interval '2 hours', 'pioggia')
+  returning id into v_closure;
+
+  -- staff esegue l'annullamento in blocco
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  select cancel_bookings_for_closure(v_closure) into v_n;
+  if v_n <> 1 then
+    raise exception 'TEST 18 FALLITO: attese 1 prenotazione annullata, ottenute %', v_n;
+  end if;
+
+  select status, cancellation_reason into v_status, v_reason from bookings where id = v_b.id;
+  if v_status <> 'CANCELLED' or v_reason <> 'pioggia' then
+    raise exception 'TEST 18 FALLITO: stato % motivo %', v_status, v_reason;
+  end if;
+
+  -- una notifica per ciascun giocatore (intestatario + rosa) = 2, senza penale
+  select count(*) into v_n from notifications where booking_id = v_b.id;
+  if v_n <> 2 then
+    raise exception 'TEST 18 FALLITO: attese 2 notifiche, ottenute %', v_n;
+  end if;
+  select count(*) into v_n from charges where booking_id = v_b.id;
+  if v_n <> 0 then
+    raise exception 'TEST 18 FALLITO: nessuna penale attesa per chiusura (%)', v_n;
+  end if;
+
+  raise notice 'TEST 18 OK: chiusura annulla in blocco e avvisa i giocatori';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;

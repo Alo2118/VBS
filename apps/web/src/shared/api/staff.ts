@@ -217,12 +217,27 @@ export const undoNoShow = async (bookingId: string): Promise<void> => {
 /** Libera un campo (disdetta gestita dallo staff), con o senza penale. */
 export const staffCancelBooking = async (
   bookingId: string,
-  charge: boolean
+  charge: boolean,
+  reason?: string
 ): Promise<void> => {
   const { error } = await supabase.rpc("staff_cancel_booking", {
     p_booking_id: bookingId,
-    p_charge: charge
+    p_charge: charge,
+    p_reason: reason ?? null
   });
   const err = toBusinessError(error);
   if (err) throw err;
+};
+
+/**
+ * Annulla in blocco le prenotazioni che ricadono in una chiusura (pioggia,
+ * maltempo…) e avvisa i giocatori. Restituisce il numero di campi liberati.
+ */
+export const cancelBookingsForClosure = async (closureId: string): Promise<number> => {
+  const { data, error } = await supabase.rpc("cancel_bookings_for_closure", {
+    p_closure_id: closureId
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+  return (data as number) ?? 0;
 };

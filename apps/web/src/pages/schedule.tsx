@@ -9,6 +9,7 @@ import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
 import { useToast } from "@/shared/ui/toast";
 import { fetchCourts } from "@/shared/api/bookings";
+import { cancelBookingsForClosure } from "@/shared/api/staff";
 import {
   createClosure,
   createOpeningRule,
@@ -250,6 +251,28 @@ const ClosuresSection = ({
     }
   };
 
+  const cancelBookings = async (id: string) => {
+    if (
+      !window.confirm(
+        "Annullare tutte le prenotazioni in questa fascia e avvisare i giocatori? L'azione non addebita penali."
+      )
+    ) {
+      return;
+    }
+    try {
+      const n = await cancelBookingsForClosure(id);
+      notify(
+        n === 0
+          ? "Nessuna prenotazione da annullare in questa fascia."
+          : `${n} ${n === 1 ? "campo annullato" : "campi annullati"}, giocatori avvisati.`,
+        n === 0 ? "info" : "success"
+      );
+      await onChange();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    }
+  };
+
   return (
     <Card>
       <h3 className="text-lg font-semibold">Chiusure / eccezioni</h3>
@@ -264,9 +287,14 @@ const ClosuresSection = ({
               {courtName(c.courtId)} · {formatDateTime(c.startAt)} → {formatDateTime(c.endAt)}
               {c.reason ? ` · ${c.reason}` : ""}
             </span>
-            <Button variant="ghost" onClick={() => remove(c.id)}>
-              Rimuovi
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => cancelBookings(c.id)}>
+                Annulla prenotazioni e avvisa
+              </Button>
+              <Button variant="ghost" onClick={() => remove(c.id)}>
+                Rimuovi
+              </Button>
+            </div>
           </div>
         ))}
       </div>

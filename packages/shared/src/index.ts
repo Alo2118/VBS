@@ -90,6 +90,18 @@ export interface Closure {
   reason?: string;
 }
 
+/** Avviso per il socio (es. annullamento campo), letto dalla campanella. */
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  bookingId?: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 export interface Booking {
   id: string;
   courtId: string;

@@ -5,6 +5,7 @@ import { cn } from "@/shared/ui/cn";
 import { Button } from "@/shared/ui/button";
 import { BrandFooter, BrandMark } from "@/shared/ui/brand";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { NotificationBell } from "@/shared/ui/notification-bell";
 import { signOut } from "@/shared/api/auth";
 import { useAuth } from "@/shared/auth/auth-context";
 
@@ -19,6 +20,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 backdrop-blur md:hidden">
         <BrandMark size="md" className="min-w-0" />
         <div className="flex shrink-0 items-center gap-2">
+          {profile && <NotificationBell />}
           {profile && (
             <StatusPill
               label={valid ? "Tessera valida" : "Tessera non valida"}
@@ -37,7 +39,10 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         {/* Sidebar (solo desktop) */}
         <aside className="hidden shrink-0 md:block md:w-64">
           <div className="sticky top-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <BrandMark size="md" />
+            <div className="flex items-center justify-between gap-2">
+              <BrandMark size="md" />
+              {profile && <NotificationBell />}
+            </div>
 
             <nav className="mt-5 flex flex-col gap-2">
               {items.map((item) => (

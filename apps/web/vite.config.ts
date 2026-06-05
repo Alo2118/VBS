@@ -14,6 +14,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // SW personalizzato (injectManifest) per gestire le notifiche push,
+      // mantenendo il precache di Workbox per l'uso offline.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"]
+      },
       includeAssets: ["icon.svg"],
       manifest: {
         name: "Vicenza Beach Summer — Prenotazione Campi",

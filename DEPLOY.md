@@ -63,9 +63,45 @@ esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applic
   (disdetta gratuita in giornata — sostituita dalla 012)
 - [`supabase/migrations/20260604000012_cancellation_grace.sql`](supabase/migrations/20260604000012_cancellation_grace.sql)
   (finestra di tolleranza disdetta dalla prenotazione, configurabile)
+- [`supabase/migrations/20260604000013_cancellation_notifications.sql`](supabase/migrations/20260604000013_cancellation_notifications.sql)
+  (annullamento campi in blocco per chiusura + notifiche/avvisi ai giocatori)
 
 Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.
+
+## Notifiche push sul telefono (annullamento campi)
+Quando lo staff annulla un campo (singolo dalla pagina **Presenze**, o in blocco
+da una **chiusura** in Orari → "Annulla prenotazioni e avvisa") l'app scrive un
+avviso per ogni giocatore. Gli avvisi compaiono subito nella **campanella 🔔**;
+per riceverli anche come **notifica sul telefono ad app chiusa** serve attivare
+il Web Push una volta sola:
+
+1. **Genera le chiavi VAPID** (una tantum):
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+   Ottieni una *Public Key* e una *Private Key*.
+2. **Frontend**: imposta `VITE_VAPID_PUBLIC_KEY=<public key>` tra le variabili di
+   build (GitHub Actions / hosting) e ricompila. Senza questa, la campanella
+   funziona ma l'opzione "Attiva avvisi sul telefono" resta nascosta.
+3. **Edge Function**: imposta i segreti e fai il deploy della funzione
+   [`supabase/functions/send-push`](supabase/functions/send-push/index.ts):
+   ```bash
+   supabase secrets set \
+     VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> \
+     VAPID_SUBJECT=mailto:info@tuodominio.it
+   supabase functions deploy send-push --no-verify-jwt
+   ```
+   (`SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` sono già forniti al runtime.)
+4. **Collega la coda alla funzione** — scegli un metodo:
+   - **Database Webhook** (consigliato, invio istantaneo): in Supabase →
+     Database → Webhooks, crea un webhook su `INSERT` della tabella
+     `public.notifications` che chiama la Edge Function `send-push`.
+   - **Oppure pg_cron** (polling): pianifica una chiamata periodica a
+     `send-push` senza body; drena tutte le notifiche con `sent_at IS NULL`.
+5. **Sul telefono**: il socio apre l'app, tocca la 🔔 e "Attiva avvisi sul
+   telefono". Su iPhone serve prima "Aggiungi a Home" (PWA installata, iOS 16.4+);
+   su Android funziona anche dal browser.
 
 ## Verifica delle regole (facoltativa, richiede Postgres 16 locale)
 ```bash
