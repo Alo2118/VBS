@@ -2,11 +2,14 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/app/app-shell";
 import { BookingsPage } from "@/pages/bookings";
 import { MyBookingsPage } from "@/pages/my-bookings";
+import { AccountPage } from "@/pages/account";
 import { DashboardPage } from "@/pages/dashboard";
 import { MembersPage } from "@/pages/members";
 import { SchedulePage } from "@/pages/schedule";
 import { PricingPage } from "@/pages/pricing";
 import { AttendancePage } from "@/pages/attendance";
+import { CashboxPage } from "@/pages/cashbox";
+import { BarPage } from "@/pages/bar";
 import { ChargesPage } from "@/pages/charges";
 import { LoginPage } from "@/pages/login";
 import { Spinner } from "@/shared/ui/spinner";
@@ -20,6 +23,23 @@ const AuthenticatedApp = () => (
       <Route path="/" element={<Navigate to="/bookings" replace />} />
       <Route path="/bookings" element={<BookingsPage />} />
       <Route path="/my-bookings" element={<MyBookingsPage />} />
+      <Route path="/account" element={<AccountPage />} />
+      <Route
+        path="/cassa"
+        element={
+          <RequireStaff>
+            <CashboxPage />
+          </RequireStaff>
+        }
+      />
+      <Route
+        path="/bar"
+        element={
+          <RequireStaff>
+            <BarPage />
+          </RequireStaff>
+        }
+      />
       <Route
         path="/dashboard"
         element={
