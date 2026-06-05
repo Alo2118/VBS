@@ -8,8 +8,8 @@ import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
 import { searchValidMembers } from "@/shared/api/bookings";
 import type { MemberLite } from "@vbs/shared";
-import { postCharge } from "@/shared/api/account";
-import { fetchProducts, type Product } from "@/shared/api/products";
+import { postBarSale, postCharge } from "@/shared/api/account";
+import { fetchProducts, groupByCategory, type Product } from "@/shared/api/products";
 import { formatEur } from "@/shared/utils/money";
 
 export const BarPage = () => {
@@ -44,14 +44,7 @@ export const BarPage = () => {
     () => products.reduce((sum, p) => sum + p.price * (cart[p.id] ?? 0), 0),
     [products, cart]
   );
-  const summary = useMemo(
-    () =>
-      products
-        .filter((p) => (cart[p.id] ?? 0) > 0)
-        .map((p) => `${cart[p.id]}× ${p.name}`)
-        .join(", "),
-    [products, cart]
-  );
+  const groups = useMemo(() => groupByCategory(products), [products]);
 
   const reset = () => {
     setMember(null);
@@ -74,26 +67,27 @@ export const BarPage = () => {
 
   const save = async () => {
     if (!member) return;
-    let amt: number;
-    let description: string;
-    if (freeMode) {
-      amt = Number(amount.replace(",", "."));
-      description = desc.trim();
-      if (!amt || amt <= 0) {
-        notify("Inserisci un importo valido.", "error");
-        return;
-      }
-    } else {
-      amt = total;
-      description = summary;
-      if (amt <= 0) {
-        notify("Aggiungi almeno un prodotto.", "error");
-        return;
-      }
-    }
     setBusy(true);
     try {
-      await postCharge(member.id, "BAR", amt, description || undefined);
+      let amt: number;
+      if (freeMode) {
+        amt = Number(amount.replace(",", "."));
+        if (!amt || amt <= 0) {
+          notify("Inserisci un importo valido.", "error");
+          return;
+        }
+        await postCharge(member.id, "BAR", amt, desc.trim() || undefined);
+      } else {
+        const items = products
+          .filter((p) => (cart[p.id] ?? 0) > 0)
+          .map((p) => ({ name: `${cart[p.id]}× ${p.name}`, amount: p.price * (cart[p.id] ?? 0) }));
+        if (items.length === 0) {
+          notify("Aggiungi almeno un prodotto.", "error");
+          return;
+        }
+        amt = total;
+        await postBarSale(member.id, items);
+      }
       notify(`Aggiunto ${formatEur(amt)} al conto di ${member.fullName}.`, "success");
       reset();
     } catch (err) {
@@ -193,35 +187,44 @@ export const BarPage = () => {
                 Listino vuoto. Aggiungi i prodotti dalla pagina «Listino».
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {products.map((p) => {
-                  const qty = cart[p.id] ?? 0;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => add(p.id, 1)}
-                      className={cn(
-                        "relative rounded-xl border px-3 py-3 text-left transition hover:bg-sand/40",
-                        qty > 0 ? "border-accent bg-sand/40" : "border-line"
-                      )}
-                    >
-                      <span className="block truncate text-base font-medium">{p.name}</span>
-                      <span className="text-sm text-muted">{formatEur(p.price)}</span>
-                      {qty > 0 && (
-                        <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-gradient px-1.5 text-sm font-semibold text-white">
-                          {qty}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="space-y-4">
+                {groups.map((g) => (
+                  <div key={g.category}>
+                    <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-muted">
+                      {g.category}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {g.items.map((p) => {
+                        const qty = cart[p.id] ?? 0;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => add(p.id, 1)}
+                            className={cn(
+                              "relative rounded-xl border px-3 py-3 text-left transition hover:bg-sand/40",
+                              qty > 0 ? "border-accent bg-sand/40" : "border-line"
+                            )}
+                          >
+                            <span className="block truncate text-base font-medium">{p.name}</span>
+                            <span className="text-sm text-muted">{formatEur(p.price)}</span>
+                            {qty > 0 && (
+                              <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-gradient px-1.5 text-sm font-semibold text-white">
+                                {qty}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
 
           {/* Carrello / totale */}
-          {!freeMode && summary && (
+          {!freeMode && total > 0 && (
             <Card className="space-y-2">
               <h3 className="text-base font-semibold">Conto</h3>
               <ul className="divide-y divide-line">

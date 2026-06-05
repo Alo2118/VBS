@@ -32,6 +32,31 @@ export const fetchProducts = async (activeOnly = false): Promise<Product[]> => {
   return (data as Record<string, unknown>[]).map(mapProduct);
 };
 
+export interface ProductGroup {
+  category: string;
+  items: Product[];
+}
+
+/** Raggruppa i prodotti per categoria, mantenendo l'ordinamento; "Altro" in fondo. */
+export const groupByCategory = (products: Product[]): ProductGroup[] => {
+  const map = new Map<string, Product[]>();
+  for (const p of products) {
+    const key = p.category?.trim() || "Altro";
+    const list = map.get(key);
+    if (list) list.push(p);
+    else map.set(key, [p]);
+  }
+  return [...map.entries()]
+    .map(([category, items]) => ({ category, items }))
+    .sort((a, b) => {
+      if (a.category === "Altro") return 1;
+      if (b.category === "Altro") return -1;
+      const am = Math.min(...a.items.map((i) => i.sortOrder));
+      const bm = Math.min(...b.items.map((i) => i.sortOrder));
+      return am - bm;
+    });
+};
+
 export interface ProductInput {
   id?: string;
   name: string;

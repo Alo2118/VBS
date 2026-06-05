@@ -10,6 +10,7 @@ import { cn } from "@/shared/ui/cn";
 import {
   deleteProduct,
   fetchProducts,
+  groupByCategory,
   upsertProduct,
   type Product
 } from "@/shared/api/products";
@@ -51,26 +52,34 @@ export const ProductsPage = () => {
           <p className="text-base text-muted">Nessun prodotto. Aggiungi il primo col pulsante in alto.</p>
         </Card>
       ) : (
-        <Card>
-          <ul className="divide-y divide-line">
-            {products.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  onClick={() => setEditing(p)}
-                  className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-sand/40"
-                >
-                  <span className="min-w-0">
-                    <span className={cn("block truncate text-base font-medium", !p.active && "text-muted line-through")}>
-                      {p.name}
-                    </span>
-                    {p.category && <span className="block text-sm text-muted">{p.category}</span>}
-                  </span>
-                  <span className="shrink-0 text-base font-semibold">{formatEur(p.price)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        <Card className="space-y-4">
+          {groupByCategory(products).map((g) => (
+            <div key={g.category}>
+              <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">{g.category}</p>
+              <ul className="divide-y divide-line">
+                {g.items.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(p)}
+                      className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-sand/40"
+                    >
+                      <span
+                        className={cn(
+                          "min-w-0 truncate text-base font-medium",
+                          !p.active && "text-muted line-through"
+                        )}
+                      >
+                        {p.name}
+                        {!p.active && <span className="ml-2 text-sm no-underline">(non in vendita)</span>}
+                      </span>
+                      <span className="shrink-0 text-base font-semibold">{formatEur(p.price)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </Card>
       )}
 

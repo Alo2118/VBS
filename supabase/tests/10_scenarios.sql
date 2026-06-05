@@ -643,4 +643,29 @@ begin
   raise notice 'TEST 27 OK: listino prodotti gestito solo dalla gestione';
 end $$;
 
+-- 28) Vendita bar: una riga per prodotto sul conto del socio
+do $$
+declare v_n int; v_sum numeric;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
+  select post_bar_sale('33333333-3333-3333-3333-333333333333',
+    '[{"name":"2× Birra","amount":7},{"name":"1× Acqua","amount":1}]'::jsonb) into v_n;
+  if v_n <> 2 then
+    raise exception 'TEST 28 FALLITO: attese 2 righe, ottenute %', v_n;
+  end if;
+  select count(*), coalesce(sum(amount), 0) into v_n, v_sum
+   from ledger_entries where member_id = '33333333-3333-3333-3333-333333333333' and kind = 'BAR';
+  if v_n <> 2 or v_sum <> 8 then
+    raise exception 'TEST 28 FALLITO: conteggio bar errato (count=% sum=%)', v_n, v_sum;
+  end if;
+  -- un socio non può vendere al bar
+  begin
+    perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+    perform post_bar_sale('33333333-3333-3333-3333-333333333333', '[{"name":"x","amount":1}]'::jsonb);
+    raise exception 'TEST 28 FALLITO: un socio non deve vendere al bar';
+  exception when sqlstate 'P0001' then null;
+  end;
+  raise notice 'TEST 28 OK: vendita bar con righe per prodotto';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;

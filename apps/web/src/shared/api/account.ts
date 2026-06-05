@@ -141,6 +141,20 @@ export const postCourtFees = async (bookingId: string): Promise<number> => {
   return Number(data ?? 0);
 };
 
+/** Vendita bar: una riga (movimento BAR) per prodotto del carrello. */
+export const postBarSale = async (
+  memberId: string,
+  items: { name: string; amount: number }[]
+): Promise<number> => {
+  const { data, error } = await supabase.rpc("post_bar_sale", {
+    p_member: memberId,
+    p_items: items
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+  return Number(data ?? 0);
+};
+
 export interface Takings {
   cash: number;
   satispay: number;
