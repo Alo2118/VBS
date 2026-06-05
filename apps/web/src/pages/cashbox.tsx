@@ -9,6 +9,7 @@ import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
 import { useAuth } from "@/shared/auth/auth-context";
+import { Segmented } from "@/shared/ui/segmented";
 import { MemberSearch } from "@/shared/members/member-search";
 import { LedgerMovements } from "@/shared/account/ledger-movements";
 import {
@@ -206,6 +207,10 @@ const AccountModal = ({
     }
   };
 
+  const payError = payAmount.trim() && !(parseAmount(payAmount) > 0) ? "Importo non valido." : undefined;
+  const chargeError =
+    chargeAmount.trim() && !(parseAmount(chargeAmount) > 0) ? "Importo non valido." : undefined;
+
   return (
     <Modal open title={target.fullName} onClose={onClose}>
       <div className="space-y-4">
@@ -234,51 +239,37 @@ const AccountModal = ({
         {/* Registra incasso */}
         <div className="space-y-2 rounded-xl border border-line p-3">
           <p className="text-sm font-semibold uppercase tracking-wide text-muted">Registra incasso</p>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <label className="flex items-center gap-1.5">
-              <input type="radio" checked={payKind === "PAYMENT"} onChange={() => setPayKind("PAYMENT")} />
-              Pagamento
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input type="radio" checked={payKind === "TOPUP"} onChange={() => setPayKind("TOPUP")} />
-              Ricarica (prepagato)
-            </label>
-            {canWaive && (
-              <label className="flex items-center gap-1.5">
-                <input type="radio" checked={payKind === "WAIVER"} onChange={() => setPayKind("WAIVER")} />
-                Storno (esonera)
-              </label>
-            )}
-          </div>
-          {payKind !== "WAIVER" ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMethod("CASH")}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                  method === "CASH" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-                )}
-              >
-                💶 Contanti
-              </button>
-              <button
-                type="button"
-                onClick={() => setMethod("SATISPAY")}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                  method === "SATISPAY" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-                )}
-              >
-                📱 Satispay
-              </button>
-            </div>
-          ) : (
+          <Segmented<"PAYMENT" | "TOPUP" | "WAIVER">
+            value={payKind}
+            onChange={setPayKind}
+            options={
+              canWaive
+                ? [
+                    { value: "PAYMENT", label: "Pagamento" },
+                    { value: "TOPUP", label: "Ricarica" },
+                    { value: "WAIVER", label: "Storno" }
+                  ]
+                : [
+                    { value: "PAYMENT", label: "Pagamento" },
+                    { value: "TOPUP", label: "Ricarica" }
+                  ]
+            }
+          />
+          {payKind === "WAIVER" ? (
             <Input
               label="Motivo dello storno"
               value={waiveReason}
               onChange={(e) => setWaiveReason(e.target.value)}
               placeholder="es. errore di registrazione"
+            />
+          ) : (
+            <Segmented<PayMethod>
+              value={method}
+              onChange={setMethod}
+              options={[
+                { value: "CASH", label: "💶 Contanti" },
+                { value: "SATISPAY", label: "📱 Satispay" }
+              ]}
             />
           )}
           <Input
@@ -288,38 +279,25 @@ const AccountModal = ({
             min="0"
             step="0.5"
             value={payAmount}
+            error={payError}
             onChange={(e) => setPayAmount(e.target.value)}
           />
-          <Button size="lg" className="w-full" disabled={busy} onClick={() => void registerPayment()}>
-            {busy ? "…" : payKind === "WAIVER" ? "Registra storno" : "Registra incasso"}
+          <Button size="lg" className="w-full" loading={busy} onClick={() => void registerPayment()}>
+            {payKind === "WAIVER" ? "Registra storno" : "Registra incasso"}
           </Button>
         </div>
 
         {/* Aggiungi addebito */}
         <div className="space-y-2 rounded-xl border border-line p-3">
           <p className="text-sm font-semibold uppercase tracking-wide text-muted">Aggiungi addebito</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setChargeKind("COURT")}
-              className={cn(
-                "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                chargeKind === "COURT" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-              )}
-            >
-              🏐 Quota campo
-            </button>
-            <button
-              type="button"
-              onClick={() => setChargeKind("BAR")}
-              className={cn(
-                "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                chargeKind === "BAR" ? "border-transparent bg-brand-gradient text-white" : "border-line"
-              )}
-            >
-              🍹 Bar
-            </button>
-          </div>
+          <Segmented<"COURT" | "BAR">
+            value={chargeKind}
+            onChange={setChargeKind}
+            options={[
+              { value: "COURT", label: "🏐 Quota campo" },
+              { value: "BAR", label: "🍹 Bar" }
+            ]}
+          />
           <Input
             label="Importo (€)"
             type="number"
@@ -327,6 +305,7 @@ const AccountModal = ({
             min="0"
             step="0.5"
             value={chargeAmount}
+            error={chargeError}
             onChange={(e) => setChargeAmount(e.target.value)}
           />
           <Input
@@ -335,8 +314,8 @@ const AccountModal = ({
             onChange={(e) => setChargeDesc(e.target.value)}
             placeholder="es. 2 birre"
           />
-          <Button variant="secondary" size="lg" className="w-full" disabled={busy} onClick={() => void addCharge()}>
-            {busy ? "…" : "Aggiungi al conto"}
+          <Button variant="secondary" size="lg" className="w-full" loading={busy} onClick={() => void addCharge()}>
+            Aggiungi al conto
           </Button>
         </div>
 

@@ -6,6 +6,7 @@ import { Page } from "@/shared/ui/page";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
+import { Segmented } from "@/shared/ui/segmented";
 import { MemberSearch } from "@/shared/members/member-search";
 import type { MemberLite } from "@vbs/shared";
 import { postBarSale, postCharge } from "@/shared/api/account";
@@ -104,28 +105,14 @@ export const BarPage = () => {
               </Button>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFreeMode(false)}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                  !freeMode ? "border-transparent bg-brand-gradient text-white" : "border-line"
-                )}
-              >
-                Listino
-              </button>
-              <button
-                type="button"
-                onClick={() => setFreeMode(true)}
-                className={cn(
-                  "flex-1 rounded-lg border px-3 py-2 text-base font-medium",
-                  freeMode ? "border-transparent bg-brand-gradient text-white" : "border-line"
-                )}
-              >
-                Importo libero
-              </button>
-            </div>
+            <Segmented<"list" | "free">
+              value={freeMode ? "free" : "list"}
+              onChange={(v) => setFreeMode(v === "free")}
+              options={[
+                { value: "list", label: "Listino" },
+                { value: "free", label: "Importo libero" }
+              ]}
+            />
 
             {freeMode ? (
               <>
@@ -136,6 +123,7 @@ export const BarPage = () => {
                   min="0"
                   step="0.5"
                   value={amount}
+                  error={amount.trim() && !(parseAmount(amount) > 0) ? "Importo non valido." : undefined}
                   onChange={(e) => setAmount(e.target.value)}
                 />
                 <Input
@@ -228,8 +216,8 @@ export const BarPage = () => {
             </Card>
           )}
 
-          <Button size="lg" className="w-full" disabled={busy} onClick={() => void save()}>
-            {busy ? "Aggiungo…" : freeMode ? "Aggiungi al conto" : `Aggiungi al conto · ${formatEur(total)}`}
+          <Button size="lg" className="w-full" loading={busy} onClick={() => void save()}>
+            {freeMode ? "Aggiungi al conto" : `Aggiungi al conto · ${formatEur(total)}`}
           </Button>
           <p className="text-sm text-muted">
             La consumazione finisce sul conto del socio; si salda alla Cassa (contanti o Satispay).

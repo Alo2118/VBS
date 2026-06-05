@@ -6,6 +6,7 @@ import { Modal } from "@/shared/ui/modal";
 import { Spinner } from "@/shared/ui/spinner";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
+import { Alert } from "@/shared/ui/alert";
 import { addPlayer, fetchPlayers, removePlayer } from "@/shared/api/bookings";
 import { useMemberSearch } from "@/shared/members/use-member-search";
 import { perPlayerShare } from "@/shared/utils/pricing";
@@ -106,9 +107,7 @@ export const RosterModal = ({
       ) : (
         <div className="space-y-4">
           {/* Riepilogo costo */}
-          <div
-            className={cnBox(enough)}
-          >
+          <Alert tone={enough ? "success" : "warning"}>
             <p className="text-base font-medium">
               {count} {count === 1 ? "giocatore" : "giocatori"} · quota {formatEur(share)} a testa
             </p>
@@ -117,7 +116,7 @@ export const RosterModal = ({
                 Servono almeno {policy.minPlayers} soci con tessera valida per giocare.
               </p>
             )}
-          </div>
+          </Alert>
 
           {/* Rosa attuale */}
           <ul className="space-y-2">
@@ -186,8 +185,3 @@ export const RosterModal = ({
     </Modal>
   );
 };
-
-const cnBox = (ok: boolean): string =>
-  ok
-    ? "rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-emerald-800"
-    : "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-800";

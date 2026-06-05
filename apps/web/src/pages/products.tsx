@@ -124,6 +124,9 @@ const ProductModal = ({
 
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
+  const priceError =
+    form.price.trim() && !(parseAmount(form.price) >= 0) ? "Prezzo non valido." : undefined;
+
   const save = async () => {
     const price = parseAmount(form.price);
     if (!form.name.trim()) {
@@ -182,8 +185,8 @@ const ProductModal = ({
           <Button variant="ghost" size="lg" onClick={onClose} disabled={busy}>
             Annulla
           </Button>
-          <Button size="lg" onClick={() => void save()} disabled={busy}>
-            {busy ? "…" : "Salva"}
+          <Button size="lg" onClick={() => void save()} loading={busy}>
+            Salva
           </Button>
         </>
       }
@@ -197,6 +200,7 @@ const ProductModal = ({
           min="0"
           step="0.5"
           value={form.price}
+          error={priceError}
           onChange={(e) => set("price", e.target.value)}
         />
         <Input

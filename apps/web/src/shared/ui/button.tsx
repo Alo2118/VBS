@@ -18,17 +18,22 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: "px-5 py-2.5 text-base"
 };
 
-const baseClasses = "rounded-xl font-semibold transition";
+const baseClasses = "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:opacity-60";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** Mostra uno spinner inline e disabilita il bottone durante l'operazione. */
+  loading?: boolean;
 };
 
 export const Button = ({
   className,
   variant = "primary",
   size = "md",
+  loading = false,
+  disabled,
+  children,
   ...props
 }: ButtonProps) => (
   <button
@@ -39,6 +44,16 @@ export const Button = ({
       sizeClasses[size],
       className
     )}
+    disabled={disabled || loading}
+    aria-busy={loading || undefined}
     {...props}
-  />
+  >
+    {loading && (
+      <span
+        className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current/30 border-t-current"
+        aria-hidden
+      />
+    )}
+    {children}
+  </button>
 );

@@ -107,12 +107,8 @@ export const LoginPage = () => {
             required
           />
 
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy
-              ? "Attendere…"
-              : mode === "login"
-                ? "Accedi"
-                : "Registrati"}
+          <Button type="submit" size="lg" className="w-full" loading={busy}>
+            {mode === "login" ? "Accedi" : "Registrati"}
           </Button>
         </form>
 

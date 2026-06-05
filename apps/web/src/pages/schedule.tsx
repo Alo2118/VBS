@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { Closure, Court, OpeningRule } from "@vbs/shared";
+import { Alert } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
 import { Page } from "@/shared/ui/page";
 import { Spinner } from "@/shared/ui/spinner";
@@ -259,8 +261,8 @@ const OpeningRulesSection = ({
           <Input label="Apertura" type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required />
           <Input label="Chiusura" type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required />
           <div className="flex items-end">
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Aggiungo…" : "Aggiungi orario"}
+            <Button type="submit" size="lg" className="w-full" loading={busy}>
+              Aggiungi orario
             </Button>
           </div>
         </div>
@@ -338,8 +340,8 @@ const RuleRow = ({
           <Select label="Durata slot" value={duration} options={DURATION_OPTIONS} onChange={(e) => setDuration(e.target.value)} />
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={save} disabled={busy}>
-            {busy ? "Salvo…" : "Salva"}
+          <Button size="sm" onClick={save} loading={busy}>
+            Salva
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={busy}>
             Annulla
@@ -398,6 +400,8 @@ const ClosuresSection = ({
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<Closure | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
@@ -438,25 +442,23 @@ const ClosuresSection = ({
     }
   };
 
-  const cancelBookings = async (id: string) => {
-    if (
-      !window.confirm(
-        "Annullare tutte le prenotazioni in questa fascia e avvisare i giocatori? L'azione non addebita penali."
-      )
-    ) {
-      return;
-    }
+  const cancelBookings = async () => {
+    if (!confirmTarget) return;
+    setCancelBusy(true);
     try {
-      const n = await cancelBookingsForClosure(id);
+      const n = await cancelBookingsForClosure(confirmTarget.id);
       notify(
         n === 0
           ? "Nessuna prenotazione da annullare in questa fascia."
           : `${n} ${n === 1 ? "campo annullato" : "campi annullati"}, giocatori avvisati.`,
         n === 0 ? "info" : "success"
       );
+      setConfirmTarget(null);
       await onChange();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    } finally {
+      setCancelBusy(false);
     }
   };
 
@@ -475,7 +477,7 @@ const ClosuresSection = ({
               {c.reason ? ` · ${c.reason}` : ""}
             </span>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={() => cancelBookings(c.id)}>
+              <Button variant="secondary" onClick={() => setConfirmTarget(c)}>
                 Annulla prenotazioni e avvisa
               </Button>
               <Button variant="ghost" onClick={() => remove(c.id)}>
@@ -492,11 +494,40 @@ const ClosuresSection = ({
         <Input label="Inizio" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} required />
         <Input label="Fine" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} required />
         <div className="flex items-end sm:col-span-2">
-          <Button type="submit" size="lg" disabled={busy}>
-            {busy ? "Aggiungo…" : "Aggiungi chiusura"}
+          <Button type="submit" size="lg" loading={busy}>
+            Aggiungi chiusura
           </Button>
         </div>
       </form>
+
+      <Modal
+        open={Boolean(confirmTarget)}
+        title="Annullare le prenotazioni?"
+        onClose={() => setConfirmTarget(null)}
+        footer={
+          <>
+            <Button variant="ghost" size="lg" onClick={() => setConfirmTarget(null)} disabled={cancelBusy}>
+              Mantieni
+            </Button>
+            <Button variant="danger" size="lg" loading={cancelBusy} onClick={() => void cancelBookings()}>
+              Annulla e avvisa
+            </Button>
+          </>
+        }
+      >
+        {confirmTarget && (
+          <div className="space-y-3">
+            <p className="text-base">
+              Verranno annullate <strong>tutte le prenotazioni</strong> in questa fascia e i giocatori
+              riceveranno un avviso. Nessuna penale verrà addebitata.
+            </p>
+            <Alert tone="warning" className="text-sm">
+              {courtName(confirmTarget.courtId)} · {formatDateTime(confirmTarget.startAt)} →{" "}
+              {formatDateTime(confirmTarget.endAt)}
+            </Alert>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 };

@@ -1,3 +1,4 @@
+import { Alert } from "@/shared/ui/alert";
 import { useAuth } from "./auth-context";
 
 /** Avviso chiaro quando il socio non può prenotare (tessera non valida). */
@@ -13,11 +14,8 @@ export const MembershipBanner = () => {
   };
 
   return (
-    <div
-      role="alert"
-      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-base text-amber-800"
-    >
+    <Alert tone="warning">
       {messages[profile.membershipStatus] ?? "Tessera non valida: non puoi prenotare."}
-    </div>
+    </Alert>
   );
 };

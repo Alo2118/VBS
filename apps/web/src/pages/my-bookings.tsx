@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Booking, BookingPolicy } from "@vbs/shared";
+import { Alert } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Modal } from "@/shared/ui/modal";
@@ -203,9 +204,9 @@ export const MyBookingsPage = () => {
         <StatusPill {...statusLabel[b.status]} />
       </div>
       {b.status === "CANCELLED" && b.cancellationReason && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Alert tone="warning" className="px-3 py-2 text-sm">
           Motivo: {b.cancellationReason}
-        </p>
+        </Alert>
       )}
     </Card>
   );
@@ -279,16 +280,16 @@ export const MyBookingsPage = () => {
               <span className="capitalize">{friendlyDay(target.startAt)}</span> {formatTime(target.startAt)}
             </p>
             {lateCancellation ? (
-              <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-base text-red-800">
+              <Alert tone="danger">
                 Sei oltre il termine di disdetta gratuita: sarà dovuto il pagamento del campo
                 ({formatEur(target.price)}).
-              </p>
+              </Alert>
             ) : (
-              <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-base text-emerald-800">
+              <Alert tone="success">
                 {new Date() > new Date(target.freeCancellationDeadline)
                   ? "La disdetta è gratuita perché hai prenotato da poco."
                   : "La disdetta è gratuita: sei entro i termini."}
-              </p>
+              </Alert>
             )}
           </div>
         )}
