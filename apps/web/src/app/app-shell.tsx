@@ -127,7 +127,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         {/* Contenuto: padding inferiore per non finire sotto la barra mobile */}
         <main className="flex-1 pb-24 md:pb-0">
           {children}
-          <BrandFooter className="mt-6" />
+          <BrandFooter className="mt-6 hidden md:block" />
         </main>
       </div>
 
