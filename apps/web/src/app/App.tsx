@@ -10,6 +10,7 @@ import { PricingPage } from "@/pages/pricing";
 import { AttendancePage } from "@/pages/attendance";
 import { CashboxPage } from "@/pages/cashbox";
 import { BarPage } from "@/pages/bar";
+import { ProductsPage } from "@/pages/products";
 import { LoginPage } from "@/pages/login";
 import { Spinner } from "@/shared/ui/spinner";
 import { ToastProvider } from "@/shared/ui/toast";
@@ -53,6 +54,14 @@ const AuthenticatedApp = () => (
         element={
           <RequireStaff>
             <MembersPage />
+          </RequireStaff>
+        }
+      />
+      <Route
+        path="/listino"
+        element={
+          <RequireStaff>
+            <ProductsPage />
           </RequireStaff>
         }
       />

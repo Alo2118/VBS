@@ -23,6 +23,7 @@ export const navigationItems: NavItem[] = [
   { label: "Riepilogo", path: "/dashboard", icon: "📊", staffOnly: true, group: "Gestione" },
   { label: "Presenze", path: "/attendance", icon: "✅", staffOnly: true, group: "Gestione" },
   { label: "Soci", path: "/members", icon: "👥", staffOnly: true, group: "Gestione" },
+  { label: "Listino", path: "/listino", icon: "🧾", staffOnly: true, group: "Gestione" },
   { label: "Orari", path: "/schedule", icon: "🕒", staffOnly: true, group: "Gestione" },
   { label: "Tariffe", path: "/pricing", icon: "💶", staffOnly: true, group: "Gestione" }
 ];

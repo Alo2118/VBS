@@ -618,4 +618,29 @@ begin
   raise notice 'TEST 26 OK: quota campo divisa tra i giocatori';
 end $$;
 
+-- 27) Listino prodotti: la gestione crea/aggiorna, i soci non possono
+do $$
+declare v_p products%rowtype; v_price numeric;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
+  select * into v_p from upsert_product(null, 'Toast', 3.00, 'Bar', true, 50);
+  if v_p.price <> 3 then
+    raise exception 'TEST 27 FALLITO: prodotto non creato';
+  end if;
+  select * into v_p from upsert_product(v_p.id, 'Toast farcito', 4.00, 'Bar', true, 50);
+  select price into v_price from products where id = v_p.id;
+  if v_price <> 4 then
+    raise exception 'TEST 27 FALLITO: aggiornamento prezzo non riuscito (%)', v_price;
+  end if;
+
+  -- un socio non può modificare il listino
+  begin
+    perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+    perform upsert_product(null, 'Abusivo', 1.00, null, true, 0);
+    raise exception 'TEST 27 FALLITO: un socio non deve modificare il listino';
+  exception when sqlstate 'P0001' then null;
+  end;
+  raise notice 'TEST 27 OK: listino prodotti gestito solo dalla gestione';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
