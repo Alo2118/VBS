@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { AppNotification } from "@vbs/shared";
 import { useAuth } from "@/shared/auth/auth-context";
 import { useToast } from "@/shared/ui/toast";
@@ -19,6 +20,7 @@ const formatWhen = (iso: string): string =>
 export const NotificationBell = () => {
   const { profile } = useAuth();
   const notify = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const [pushState, setPushState] = useState<PushState>("off");
@@ -136,19 +138,33 @@ export const NotificationBell = () => {
               {items.length === 0 ? (
                 <p className="px-4 py-6 text-center text-sm text-muted">Nessun avviso.</p>
               ) : (
-                items.map((n) => (
-                  <div
-                    key={n.id}
-                    className={cn(
-                      "border-b border-slate-800/60 px-4 py-3",
-                      !n.readAt && "bg-slate-800/40"
-                    )}
-                  >
-                    <p className="text-sm font-medium text-slate-100">{n.title}</p>
-                    <p className="mt-0.5 text-sm text-slate-300">{n.body}</p>
-                    <p className="mt-1 text-xs text-muted">{formatWhen(n.createdAt)}</p>
-                  </div>
-                ))
+                items.map((n) => {
+                  const url = typeof n.data?.url === "string" ? n.data.url : undefined;
+                  return (
+                    <div
+                      key={n.id}
+                      role={url ? "button" : undefined}
+                      tabIndex={url ? 0 : undefined}
+                      onClick={
+                        url
+                          ? () => {
+                              setOpen(false);
+                              navigate(url);
+                            }
+                          : undefined
+                      }
+                      className={cn(
+                        "border-b border-slate-800/60 px-4 py-3",
+                        !n.readAt && "bg-slate-800/40",
+                        url && "cursor-pointer hover:bg-slate-800"
+                      )}
+                    >
+                      <p className="text-sm font-medium text-slate-100">{n.title}</p>
+                      <p className="mt-0.5 text-sm text-slate-300">{n.body}</p>
+                      <p className="mt-1 text-xs text-muted">{formatWhen(n.createdAt)}</p>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

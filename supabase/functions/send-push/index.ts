@@ -40,7 +40,13 @@ async function sendOne(n: NotificationRow): Promise<void> {
     .select("endpoint, p256dh, auth")
     .eq("member_id", n.member_id);
 
-  const payload = JSON.stringify({ title: n.title, body: n.body, tag: n.id, data: n.data });
+  const payload = JSON.stringify({
+    title: n.title,
+    body: n.body,
+    tag: n.id,
+    url: (n.data?.url as string | undefined) ?? undefined,
+    data: n.data
+  });
 
   await Promise.all(
     (subs ?? []).map(async (s) => {

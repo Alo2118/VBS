@@ -424,4 +424,22 @@ begin
   raise notice 'TEST 18 OK: chiusura annulla in blocco e avvisa i giocatori';
 end $$;
 
+-- 19) Nuova registrazione -> avviso a chi può approvare (staff)
+do $$
+declare v_new uuid := '99999999-9999-9999-9999-999999999999'; v_n int;
+begin
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (v_new, 'nuovo@test.it', '{"full_name":"Nuovo Socio"}');
+  -- il trigger di registrazione crea il member PENDING e avvisa lo staff
+  select count(*) into v_n
+  from notifications
+  where type = 'NEW_MEMBER'
+    and member_id = '11111111-1111-1111-1111-111111111111'   -- STAFF (ADMIN)
+    and (data ->> 'memberId') = v_new::text;
+  if v_n <> 1 then
+    raise exception 'TEST 19 FALLITO: attesa 1 notifica allo staff, ottenute %', v_n;
+  end if;
+  raise notice 'TEST 19 OK: nuova registrazione avvisa lo staff';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
