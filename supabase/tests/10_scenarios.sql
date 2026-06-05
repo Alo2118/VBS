@@ -552,4 +552,35 @@ begin
   raise notice 'TEST 24 OK: promemoria partita ai giocatori, senza duplicati';
 end $$;
 
+-- 25) Conto del socio (ledger): addebiti, incasso col metodo, saldo
+do $$
+declare v_bal numeric; v_n int;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
+  perform post_account_charge('22222222-2222-2222-2222-222222222222', 'BAR', 5, 'Birra');
+  perform post_account_charge('22222222-2222-2222-2222-222222222222', 'COURT', 8, 'Quota campo');
+  perform post_account_payment('22222222-2222-2222-2222-222222222222', 10, 'CASH');
+
+  select account_balance('22222222-2222-2222-2222-222222222222') into v_bal;
+  if v_bal <> -3 then
+    raise exception 'TEST 25 FALLITO: saldo atteso -3, ottenuto %', v_bal;
+  end if;
+
+  select count(*) into v_n from list_member_accounts()
+   where member_id = '22222222-2222-2222-2222-222222222222' and balance = -3;
+  if v_n <> 1 then
+    raise exception 'TEST 25 FALLITO: conto non in elenco cassa (%)', v_n;
+  end if;
+
+  -- un socio non può vedere il saldo di un altro
+  begin
+    perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
+    perform account_balance('22222222-2222-2222-2222-222222222222');
+    raise exception 'TEST 25 FALLITO: un socio non deve leggere il conto altrui';
+  exception when sqlstate 'P0001' then null;
+  end;
+
+  raise notice 'TEST 25 OK: conto socio, metodo pagamento e saldo';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
