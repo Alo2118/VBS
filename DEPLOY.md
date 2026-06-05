@@ -71,6 +71,13 @@ esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applic
   (la disdetta del socio avvisa gli altri giocatori della rosa)
 - [`supabase/migrations/20260604000016_more_notifications.sql`](supabase/migrations/20260604000016_more_notifications.sql)
   (avvisi: socio approvato, aggiunto alla rosa, nuovo addebito + funzione promemoria)
+- …migrazioni 017–022 (conto/ledger, quota campo, prodotti, vendita bar)…
+- [`supabase/migrations/20260604000023_fix_members_update_policy.sql`](supabase/migrations/20260604000023_fix_members_update_policy.sql)
+  (sicurezza: blocca la modifica diretta dei soci — niente auto-promozione di ruolo)
+- [`supabase/migrations/20260604000024_booking_overlap_and_locks.sql`](supabase/migrations/20260604000024_booking_overlap_and_locks.sql)
+  (anti-overbooking sugli intervalli orari + lock di riga su disdette/no-show/quota campo)
+  ⚠️ Se nel DB esistono già prenotazioni **confermate sovrapposte**, la creazione
+  del vincolo fallisce: risolvi prima le sovrapposizioni, poi riesegui.
 
 Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.
@@ -91,20 +98,30 @@ il Web Push una volta sola:
    build (GitHub Actions / hosting) e ricompila. Senza questa, la campanella
    funziona ma l'opzione "Attiva avvisi sul telefono" resta nascosta.
 3. **Edge Function**: imposta i segreti e fai il deploy della funzione
-   [`supabase/functions/send-push`](supabase/functions/send-push/index.ts):
+   [`supabase/functions/send-push`](supabase/functions/send-push/index.ts).
+   La funzione usa la *service role* (bypassa RLS), quindi è protetta da un
+   **secret condiviso obbligatorio** `PUSH_WEBHOOK_SECRET`: senza header valido
+   ogni chiamata è rifiutata (401). Genera un valore casuale lungo (es.
+   `openssl rand -hex 32`).
    ```bash
    supabase secrets set \
      VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> \
-     VAPID_SUBJECT=mailto:info@tuodominio.it
+     VAPID_SUBJECT=mailto:info@tuodominio.it \
+     PUSH_WEBHOOK_SECRET=<valore-casuale-lungo>
    supabase functions deploy send-push --no-verify-jwt
    ```
-   (`SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` sono già forniti al runtime.)
-4. **Collega la coda alla funzione** — scegli un metodo:
+   (`SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` sono già forniti al runtime.
+   `--no-verify-jwt` è voluto: l'autorizzazione passa dal secret, non da un JWT
+   utente, perché il chiamante è il webhook/cron, non un socio.)
+4. **Collega la coda alla funzione** — scegli un metodo. In entrambi i casi
+   aggiungi l'header HTTP `x-webhook-secret: <PUSH_WEBHOOK_SECRET>`:
    - **Database Webhook** (consigliato, invio istantaneo): in Supabase →
      Database → Webhooks, crea un webhook su `INSERT` della tabella
-     `public.notifications` che chiama la Edge Function `send-push`.
+     `public.notifications` che chiama la Edge Function `send-push`; nella
+     sezione *HTTP Headers* aggiungi `x-webhook-secret` con il valore del secret.
    - **Oppure pg_cron** (polling): pianifica una chiamata periodica a
-     `send-push` senza body; drena tutte le notifiche con `sent_at IS NULL`.
+     `send-push` senza body (passando lo stesso header); drena tutte le
+     notifiche con `sent_at IS NULL`.
 ### Promemoria partita (pg_cron)
 Per il promemoria automatico qualche ora prima dello slot, abilita pg_cron e
 pianifica la funzione `enqueue_match_reminders` (idempotente, niente duplicati):

@@ -3065,6 +3065,7 @@ create extension if not exists btree_gist; -- consente `court_id WITH =` nel gis
 -- (A) Sostituzione indice unico → exclusion constraint -----------------------
 drop index if exists bookings_active_slot_uidx;
 
+alter table bookings drop constraint if exists bookings_no_overlap; -- ri-eseguibile
 alter table bookings
   add constraint bookings_no_overlap
   exclude using gist (
