@@ -68,7 +68,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         )}
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-3 py-4 md:flex-row md:gap-6 md:px-6 md:py-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
         {/* Sidebar (solo desktop) */}
         <aside className="hidden shrink-0 md:block md:w-64">
           <div className="sticky top-6 rounded-2xl border border-line bg-card p-4 shadow-soft">
