@@ -1,4 +1,4 @@
-import type { Charge, MemberProfile, PriceRule } from "@vbs/shared";
+import type { MemberProfile, PriceRule } from "@vbs/shared";
 import { supabase, toBusinessError } from "./supabase";
 
 const unwrap = <T>(data: T | null, error: Parameters<typeof toBusinessError>[0]): T => {
@@ -98,51 +98,6 @@ export const updatePlayerPolicy = async (params: {
       cancellation_grace_minutes: params.cancellationGraceMinutes
     })
     .eq("id", 1);
-  const err = toBusinessError(error);
-  if (err) throw err;
-};
-
-// --- Addebiti ----------------------------------------------------------------
-export type ChargeRow = Charge & { memberName: string; memberNickname?: string };
-
-export const fetchCharges = async (): Promise<ChargeRow[]> => {
-  const { data, error } = await supabase
-    .from("charges")
-    .select(
-      "id, booking_id, member_id, type, amount, status, reason, created_at, settled_at, settled_by, members:member_id(full_name, nickname)"
-    )
-    .order("created_at", { ascending: false });
-  const rows = unwrap(data, error) ?? [];
-  return rows.map((r: Record<string, unknown>) => {
-    const member = r.members as { full_name?: string; nickname?: string } | null;
-    return {
-      id: r.id as string,
-      bookingId: r.booking_id as string,
-      memberId: r.member_id as string,
-      type: r.type as Charge["type"],
-      amount: Number(r.amount),
-      status: r.status as Charge["status"],
-      reason: (r.reason as string) ?? undefined,
-      createdAt: r.created_at as string,
-      settledAt: (r.settled_at as string) ?? undefined,
-      settledBy: (r.settled_by as string) ?? undefined,
-      memberName: member?.full_name ?? "—",
-      memberNickname: member?.nickname ?? undefined
-    };
-  });
-};
-
-export const settleCharge = async (chargeId: string): Promise<void> => {
-  const { error } = await supabase.rpc("settle_charge", { p_charge_id: chargeId });
-  const err = toBusinessError(error);
-  if (err) throw err;
-};
-
-export const waiveCharge = async (chargeId: string, reason: string): Promise<void> => {
-  const { error } = await supabase.rpc("waive_charge", {
-    p_charge_id: chargeId,
-    p_reason: reason
-  });
   const err = toBusinessError(error);
   if (err) throw err;
 };

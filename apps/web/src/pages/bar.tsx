@@ -6,7 +6,7 @@ import { Page } from "@/shared/ui/page";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
-import { searchValidMembers } from "@/shared/api/bookings";
+import { MemberSearch } from "@/shared/members/member-search";
 import type { MemberLite } from "@vbs/shared";
 import { postBarSale, postCharge } from "@/shared/api/account";
 import { fetchProducts, groupByCategory, type Product } from "@/shared/api/products";
@@ -14,8 +14,6 @@ import { formatEur } from "@/shared/utils/money";
 
 export const BarPage = () => {
   const notify = useToast();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<MemberLite[]>([]);
   const [member, setMember] = useState<MemberLite | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -28,18 +26,6 @@ export const BarPage = () => {
     void fetchProducts(true).then(setProducts).catch(() => undefined);
   }, []);
 
-  useEffect(() => {
-    if (member || query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    let alive = true;
-    void searchValidMembers(query).then((r) => alive && setResults(r)).catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [query, member]);
-
   const total = useMemo(
     () => products.reduce((sum, p) => sum + p.price * (cart[p.id] ?? 0), 0),
     [products, cart]
@@ -48,8 +34,6 @@ export const BarPage = () => {
 
   const reset = () => {
     setMember(null);
-    setQuery("");
-    setResults([]);
     setCart({});
     setFreeMode(false);
     setAmount("");
@@ -100,33 +84,12 @@ export const BarPage = () => {
   return (
     <Page title="Bar" description="Aggiungi le consumazioni al conto del socio.">
       {!member ? (
-        <Card className="space-y-3">
-          <Input
+        <Card>
+          <MemberSearch
             label="A chi va la consumazione?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
             placeholder="Cerca un socio per nome o soprannome…"
-            autoComplete="off"
+            onSelect={setMember}
           />
-          {results.length > 0 && (
-            <ul className="divide-y divide-line">
-              {results.map((m) => (
-                <li key={m.id}>
-                  <button
-                    type="button"
-                    onClick={() => setMember(m)}
-                    className="flex w-full items-center justify-between px-1 py-2 text-left text-base hover:bg-sand/40"
-                  >
-                    <span>
-                      {m.fullName}
-                      <NicknameTag nickname={m.nickname} className="ml-1" />
-                    </span>
-                    <span aria-hidden className="text-accent">›</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </Card>
       ) : (
         <>

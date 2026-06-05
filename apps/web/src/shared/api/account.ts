@@ -37,6 +37,22 @@ export const isDebit = (kind: LedgerKind): boolean =>
 export const signedAmount = (e: { kind: LedgerKind; amount: number }): number =>
   isDebit(e.kind) ? -e.amount : e.amount;
 
+/** Etichette dei movimenti e dei metodi di pagamento (riuso UI). */
+export const LEDGER_KIND_LABELS: Record<LedgerKind, string> = {
+  COURT: "Quota campo",
+  BAR: "Bar",
+  PENALTY: "Penale",
+  PAYMENT: "Pagamento",
+  TOPUP: "Ricarica",
+  WAIVER: "Storno",
+  ADJUST: "Rettifica"
+};
+
+export const PAY_METHOD_LABELS: Record<PayMethod, string> = {
+  CASH: "contanti",
+  SATISPAY: "Satispay"
+};
+
 const mapEntry = (r: Record<string, unknown>): LedgerEntry => ({
   id: r.id as string,
   memberId: r.member_id as string,

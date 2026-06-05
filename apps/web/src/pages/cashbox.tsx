@@ -9,32 +9,19 @@ import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
 import { useAuth } from "@/shared/auth/auth-context";
-import { searchValidMembers } from "@/shared/api/bookings";
-import type { MemberLite } from "@vbs/shared";
+import { MemberSearch } from "@/shared/members/member-search";
+import { LedgerMovements } from "@/shared/account/ledger-movements";
 import {
   fetchMemberAccounts,
   fetchMemberLedger,
   postCharge,
   postPayment,
   postWaiver,
-  signedAmount,
   type LedgerEntry,
-  type LedgerKind,
   type MemberAccount,
   type PayMethod
 } from "@/shared/api/account";
 import { formatEur } from "@/shared/utils/money";
-import { formatDateTime } from "@/shared/utils/date";
-
-const kindLabel: Record<LedgerKind, string> = {
-  COURT: "Quota campo",
-  BAR: "Bar",
-  PENALTY: "Penale",
-  PAYMENT: "Pagamento",
-  TOPUP: "Ricarica",
-  WAIVER: "Storno",
-  ADJUST: "Rettifica"
-};
 
 type Target = { memberId: string; fullName: string; nickname?: string };
 
@@ -42,8 +29,6 @@ export const CashboxPage = () => {
   const notify = useToast();
   const [accounts, setAccounts] = useState<MemberAccount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<MemberLite[]>([]);
   const [target, setTarget] = useState<Target | null>(null);
 
   const load = useCallback(async () => {
@@ -61,59 +46,21 @@ export const CashboxPage = () => {
     void load();
   }, [load]);
 
-  // Ricerca soci per registrare un movimento anche a chi non ha ancora un conto.
-  useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    let alive = true;
-    void searchValidMembers(query).then((r) => alive && setResults(r)).catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [query]);
-
   const owing = useMemo(() => accounts.filter((a) => a.balance < 0), [accounts]);
   const others = useMemo(() => accounts.filter((a) => a.balance >= 0), [accounts]);
 
   const onClose = () => {
     setTarget(null);
-    setQuery("");
-    setResults([]);
     void load();
   };
 
   return (
     <Page title="Cassa" description="Incassi e conti dei soci (contanti o Satispay).">
       {/* Cerca un socio per registrare incasso o consumazione */}
-      <Card className="space-y-2">
-        <Input
-          label="Cerca un socio"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Nome o soprannome…"
-          autoComplete="off"
+      <Card>
+        <MemberSearch
+          onSelect={(m) => setTarget({ memberId: m.id, fullName: m.fullName, nickname: m.nickname })}
         />
-        {results.length > 0 && (
-          <ul className="divide-y divide-line">
-            {results.map((m) => (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  onClick={() => setTarget({ memberId: m.id, fullName: m.fullName, nickname: m.nickname })}
-                  className="flex w-full items-center justify-between px-1 py-2 text-left text-base hover:bg-sand/40"
-                >
-                  <span>
-                    {m.fullName}
-                    <NicknameTag nickname={m.nickname} className="ml-1" />
-                  </span>
-                  <span aria-hidden className="text-accent">›</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
       </Card>
 
       {loading ? (
@@ -397,23 +344,7 @@ const AccountModal = ({
         {entries.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Ultimi movimenti</p>
-            <ul className="divide-y divide-line">
-              {entries.slice(0, 6).map((e) => {
-                const s = signedAmount(e);
-                return (
-                  <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                    <span className="min-w-0 truncate">
-                      {e.description || kindLabel[e.kind]}{" "}
-                      <span className="text-muted">· {formatDateTime(e.createdAt)}</span>
-                    </span>
-                    <span className={cn("shrink-0 font-semibold", s < 0 ? "text-red-600" : "text-emerald-600")}>
-                      {s < 0 ? "−" : "+"}
-                      {formatEur(Math.abs(s))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <LedgerMovements entries={entries} limit={6} />
           </div>
         )}
       </div>
