@@ -48,7 +48,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-surface">
       {/* Testata (solo mobile): gradiente mare→sole, identità, stato, uscita */}
-      <header className="sticky top-0 z-20 bg-brand-gradient px-4 py-2.5 shadow-hero md:hidden">
+      <header className="sticky top-0 z-20 bg-brand-gradient px-4 py-2 shadow-hero md:hidden">
         <div className="flex items-center justify-between gap-3">
           <BrandMark size="md" tone="light" showSubtitle={false} className="min-w-0" />
           <div className="flex shrink-0 items-center gap-2">
@@ -60,8 +60,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             )}
           </div>
         </div>
-        {profile && (
-          <div className="mt-2">
+        {/* La pill compare solo quando serve (tessera non valida); da valida è una riga in meno. */}
+        {profile && !valid && (
+          <div className="mt-1.5">
             <MembershipPill valid={valid} />
           </div>
         )}

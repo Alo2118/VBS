@@ -136,23 +136,23 @@ export const BookingsPage = () => {
       <MembershipBanner />
 
       {/* Passo 1: scegli il giorno nella settimana */}
-      <Card className="space-y-3">
+      <Card className="space-y-2 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <Button
             variant="secondary"
-            size="lg"
+            size="sm"
             onClick={() => goWeek(-1)}
             disabled={isCurrentWeek}
             aria-label="Settimana precedente"
           >
             ‹
           </Button>
-          <p className="text-center text-base font-medium capitalize">
+          <p className="text-center text-sm font-medium capitalize">
             {formatDay(days[0])} – {formatDay(days[6])}
           </p>
           <Button
             variant="secondary"
-            size="lg"
+            size="sm"
             onClick={() => goWeek(1)}
             aria-label="Settimana successiva"
           >
@@ -160,7 +160,7 @@ export const BookingsPage = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1">
           {days.map((d) => {
             const iso = toIsoDate(d);
             const isPast = iso < todayIso;
@@ -185,7 +185,7 @@ export const BookingsPage = () => {
                 )}
               >
                 <span className="text-xs font-medium capitalize">{formatWeekdayShort(d)}</span>
-                <span className="text-lg font-semibold leading-tight">{d.getDate()}</span>
+                <span className="text-base font-semibold leading-tight">{d.getDate()}</span>
                 {!isPast && (
                   <span
                     className={cn(
@@ -213,9 +213,9 @@ export const BookingsPage = () => {
         </Card>
       ) : (
         byCourt.map((court) => (
-          <Card key={court.name}>
-            <h3 className="text-lg font-semibold">{court.name}</h3>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          <Card key={court.name} className="p-3 sm:p-4">
+            <h3 className="text-base font-semibold">{court.name}</h3>
+            <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
               {court.slots.map((slot) => {
                 const free = slot.status === "FREE";
                 return (
@@ -225,17 +225,17 @@ export const BookingsPage = () => {
                     disabled={!free || !canBook}
                     onClick={() => setSelected(slot)}
                     className={cn(
-                      "flex flex-col items-center rounded-xl border px-3 py-2.5 text-center transition",
+                      "flex flex-col items-center rounded-lg border px-2 py-1.5 text-center transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       free && canBook
                         ? "border-sea/40 bg-accent-soft hover:bg-sea/15"
                         : "cursor-not-allowed border-line bg-sand/30 opacity-60"
                     )}
                   >
-                    <span className="text-lg font-semibold">{formatTime(slot.startAt)}</span>
+                    <span className="text-base font-semibold leading-tight">{formatTime(slot.startAt)}</span>
                     <span
                       className={cn(
-                        "mt-1 w-full truncate text-sm",
+                        "w-full truncate text-[0.7rem]",
                         free ? "text-emerald-600" : "text-muted"
                       )}
                       title={free ? undefined : slot.booker}
