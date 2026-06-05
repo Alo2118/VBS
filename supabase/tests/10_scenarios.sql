@@ -442,4 +442,35 @@ begin
   raise notice 'TEST 19 OK: nuova registrazione avvisa lo staff';
 end $$;
 
+-- 20) Disdetta di un socio -> avviso agli ALTRI giocatori (non a chi disdice)
+do $$
+declare
+  v_court uuid; v_start timestamptz; v_b bookings%rowtype; v_n int;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name limit 1 offset 1;       -- 'Giallo'
+  v_start := ((current_date + 12)::timestamp + time '14:00') at time zone 'Europe/Rome';
+  select * into v_b from create_booking(v_court, v_start);
+  -- secondo giocatore in rosa
+  insert into booking_players (booking_id, member_id, added_by)
+  values (v_b.id, '33333333-3333-3333-3333-333333333333',
+          '22222222-2222-2222-2222-222222222222');
+
+  -- il capogruppo (SOCIO) disdice
+  perform cancel_booking(v_b.id);
+
+  -- l'altro giocatore (PEND) riceve l'avviso, il capogruppo no
+  select count(*) into v_n from notifications
+   where booking_id = v_b.id and member_id = '33333333-3333-3333-3333-333333333333';
+  if v_n <> 1 then
+    raise exception 'TEST 20 FALLITO: atteso 1 avviso all''altro giocatore, ottenuti %', v_n;
+  end if;
+  select count(*) into v_n from notifications
+   where booking_id = v_b.id and member_id = '22222222-2222-2222-2222-222222222222';
+  if v_n <> 0 then
+    raise exception 'TEST 20 FALLITO: chi disdice non deve essere avvisato (%)', v_n;
+  end if;
+  raise notice 'TEST 20 OK: la disdetta avvisa gli altri giocatori, non chi disdice';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
