@@ -1,7 +1,7 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { MemberProfile } from "@vbs/shared";
-import { STAFF_ROLES } from "@vbs/shared";
+import { CASHIER_ROLES, STAFF_ROLES } from "@vbs/shared";
 import { supabase } from "@/shared/api/supabase";
 import { fetchMyProfile } from "@/shared/api/auth";
 
@@ -10,6 +10,7 @@ type AuthState = {
   profile: MemberProfile | null;
   isAuthenticated: boolean;
   isStaff: boolean;
+  isCashier: boolean;
   canBook: boolean;
   refresh: () => Promise<void>;
 };
@@ -46,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     isAuthenticated: Boolean(profile),
     isStaff: profile ? STAFF_ROLES.includes(profile.role) : false,
+    isCashier: profile ? CASHIER_ROLES.includes(profile.role) : false,
     canBook: profile?.membershipStatus === "VALID",
     refresh: load
   };

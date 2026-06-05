@@ -26,8 +26,11 @@ export const ROLES: Role[] = [
   "MEMBER"
 ];
 
-/** Ruoli che possono operare per conto dei soci (gestione, validazione, incassi). */
+/** Ruoli che possono operare per conto dei soci (gestione, validazione). */
 export const STAFF_ROLES: Role[] = ["ADMIN", "MANAGER", "FRONT_DESK"];
+
+/** Ruoli abilitati a Cassa e Bar (gestione + personale bar). */
+export const CASHIER_ROLES: Role[] = ["ADMIN", "MANAGER", "FRONT_DESK", "BAR_STAFF"];
 
 /** Codici errore di business restituiti dalle funzioni Supabase. */
 export type BusinessErrorCode =

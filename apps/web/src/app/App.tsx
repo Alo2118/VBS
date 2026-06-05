@@ -15,6 +15,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { ToastProvider } from "@/shared/ui/toast";
 import { AuthProvider, useAuth } from "@/shared/auth/auth-context";
 import { RequireStaff } from "@/shared/auth/require-staff";
+import { RequireCashier } from "@/shared/auth/require-cashier";
 
 const AuthenticatedApp = () => (
   <AppShell>
@@ -26,17 +27,17 @@ const AuthenticatedApp = () => (
       <Route
         path="/cassa"
         element={
-          <RequireStaff>
+          <RequireCashier>
             <CashboxPage />
-          </RequireStaff>
+          </RequireCashier>
         }
       />
       <Route
         path="/bar"
         element={
-          <RequireStaff>
+          <RequireCashier>
             <BarPage />
-          </RequireStaff>
+          </RequireCashier>
         }
       />
       <Route

@@ -9,6 +9,7 @@ import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
 import { cn } from "@/shared/ui/cn";
 import { fetchAdminSummary } from "@/shared/api/dashboard";
+import { fetchTakingsToday, type Takings } from "@/shared/api/account";
 import { fetchUpcomingBookings } from "@/shared/api/staff";
 import type { DayBooking } from "@/shared/api/staff";
 import { BookingDetailModal } from "@/shared/booking/booking-detail-modal";
@@ -55,15 +56,21 @@ export const DashboardPage = () => {
   const notify = useToast();
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [upcoming, setUpcoming] = useState<DayBooking[]>([]);
+  const [takings, setTakings] = useState<Takings | null>(null);
   const [detail, setDetail] = useState<DayBooking | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, u] = await Promise.all([fetchAdminSummary(), fetchUpcomingBookings()]);
+      const [s, u, t] = await Promise.all([
+        fetchAdminSummary(),
+        fetchUpcomingBookings(),
+        fetchTakingsToday()
+      ]);
       setSummary(s);
       setUpcoming(u);
+      setTakings(t);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Errore nel caricamento.", "error");
     } finally {
@@ -80,6 +87,17 @@ export const DashboardPage = () => {
       {loading || !summary ? (
         <Spinner label="Carico il riepilogo…" />
       ) : (
+        <>
+        {takings && (
+          <Card className="mb-4">
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted">Incassi di oggi</p>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <span className="text-base">💶 Contanti <span className="font-semibold">{formatEur(takings.cash)}</span></span>
+              <span className="text-base">📱 Satispay <span className="font-semibold">{formatEur(takings.satispay)}</span></span>
+              <span className="text-base text-muted">Totale <span className="font-semibold text-ink">{formatEur(takings.cash + takings.satispay)}</span></span>
+            </div>
+          </Card>
+        )}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           <Stat
             label="Prenotazioni oggi"
@@ -100,14 +118,14 @@ export const DashboardPage = () => {
             hint={summary.pendingMembers > 0 ? "Richiedono validazione" : "Tutto in regola"}
           />
           <Stat
-            label="Addebiti da incassare"
+            label="Da incassare"
             value={String(summary.chargesDueCount)}
-            to="/charges"
+            to="/cassa"
             tone={summary.chargesDueCount > 0 ? "danger" : "neutral"}
             hint={
               summary.chargesDueCount > 0
                 ? `Totale ${formatEur(summary.chargesDueAmount)}`
-                : "Nessun sospeso"
+                : "Tutto saldato"
             }
           />
           <Stat
@@ -125,6 +143,7 @@ export const DashboardPage = () => {
             hint="Sotto il minimo giocatori"
           />
         </div>
+        </>
       )}
 
       {!loading && (

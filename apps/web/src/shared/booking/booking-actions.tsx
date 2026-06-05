@@ -7,6 +7,7 @@ import {
   staffCancelBooking,
   undoNoShow
 } from "@/shared/api/staff";
+import { postCourtFees } from "@/shared/api/account";
 import type { DayBooking } from "@/shared/api/staff";
 import { formatTime } from "@/shared/utils/date";
 import { formatEur } from "@/shared/utils/money";
@@ -33,7 +34,7 @@ export const BookingActions = ({
     setBusy(true);
     try {
       await fn();
-      notify(ok, "info");
+      if (ok) notify(ok, "info");
       await onChanged();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
@@ -77,6 +78,26 @@ export const BookingActions = ({
           disabled={busy}
         >
           Annulla no-show
+        </Button>
+      )}
+      {(booking.status === "CONFIRMED" || booking.status === "NO_SHOW") && (
+        <Button
+          variant="ghost"
+          size="lg"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              const n = await postCourtFees(booking.id);
+              notify(
+                n > 0
+                  ? `Quota campo addebitata a ${n} giocatori.`
+                  : "Quota campo già addebitata.",
+                n > 0 ? "success" : "info"
+              );
+            }, "")
+          }
+        >
+          Quota campo
         </Button>
       )}
 

@@ -133,6 +133,28 @@ export const postPayment = async (
   if (err) throw err;
 };
 
+/** Addebita la quota campo divisa tra i giocatori della prenotazione. */
+export const postCourtFees = async (bookingId: string): Promise<number> => {
+  const { data, error } = await supabase.rpc("post_court_fees", { p_booking_id: bookingId });
+  const err = toBusinessError(error);
+  if (err) throw err;
+  return Number(data ?? 0);
+};
+
+export interface Takings {
+  cash: number;
+  satispay: number;
+}
+
+/** Incassi di oggi per metodo (contanti / Satispay). */
+export const fetchTakingsToday = async (): Promise<Takings> => {
+  const { data, error } = await supabase.rpc("takings_today");
+  const err = toBusinessError(error);
+  if (err) throw err;
+  const row = (Array.isArray(data) ? data[0] : data) as { cash?: number; satispay?: number } | null;
+  return { cash: Number(row?.cash ?? 0), satispay: Number(row?.satispay ?? 0) };
+};
+
 /** Storno/esonero di un importo dovuto (solo gestione: ADMIN/MANAGER). */
 export const postWaiver = async (
   memberId: string,

@@ -585,4 +585,37 @@ begin
   raise notice 'TEST 25 OK: conto socio, metodo pagamento e saldo';
 end $$;
 
+-- 26) Quota campo automatica: divisa tra i giocatori, idempotente
+do $$
+declare v_court uuid; v_bid uuid := gen_random_uuid(); v_n int; v_sum numeric;
+begin
+  select id into v_court from courts order by name limit 1;
+  insert into bookings (id, court_id, member_id, start_at, end_at, price,
+                        per_head_price, free_cancellation_deadline, status)
+  values (v_bid, v_court, '99999999-9999-9999-9999-999999999999',
+          now() + interval '2 days', now() + interval '2 days' + interval '1 hour',
+          12, 5, now(), 'CONFIRMED');
+  insert into booking_players (booking_id, member_id) values
+    (v_bid, '99999999-9999-9999-9999-999999999999'),
+    (v_bid, '33333333-3333-3333-3333-333333333333'),
+    (v_bid, '22222222-2222-2222-2222-222222222222');
+
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- STAFF
+  select post_court_fees(v_bid) into v_n;
+  if v_n <> 3 then
+    raise exception 'TEST 26 FALLITO: attesi 3 addebiti campo, ottenuti %', v_n;
+  end if;
+  select count(*), coalesce(sum(amount), 0) into v_n, v_sum
+   from ledger_entries where booking_id = v_bid and kind = 'COURT';
+  if v_n <> 3 or v_sum <> 12 then
+    raise exception 'TEST 26 FALLITO: 3 quote da 4 (tot 12), ottenuto count=% sum=%', v_n, v_sum;
+  end if;
+  -- idempotente: seconda chiamata non duplica
+  select post_court_fees(v_bid) into v_n;
+  if v_n <> 0 then
+    raise exception 'TEST 26 FALLITO: quota campo duplicata (%)', v_n;
+  end if;
+  raise notice 'TEST 26 OK: quota campo divisa tra i giocatori';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;

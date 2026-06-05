@@ -1,6 +1,6 @@
 import type React from "react";
 import { NavLink } from "react-router-dom";
-import { navigationItems } from "@/shared/config/navigation";
+import { navGroupOrder, navigationItems } from "@/shared/config/navigation";
 import { cn } from "@/shared/ui/cn";
 import { Button } from "@/shared/ui/button";
 import { BrandFooter, BrandMark } from "@/shared/ui/brand";
@@ -10,8 +10,12 @@ import { signOut } from "@/shared/api/auth";
 import { useAuth } from "@/shared/auth/auth-context";
 
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
-  const { profile, isStaff } = useAuth();
-  const items = navigationItems.filter((item) => !item.staffOnly || isStaff);
+  const { profile, isStaff, isCashier } = useAuth();
+  const canSee = (item: (typeof navigationItems)[number]) =>
+    (!item.staffOnly && !item.cashier) ||
+    (item.staffOnly && isStaff) ||
+    (item.cashier && isCashier);
+  const items = navigationItems.filter(canSee);
   const valid = profile?.membershipStatus === "VALID";
 
   return (
@@ -48,24 +52,35 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
               {profile && <NotificationBell />}
             </div>
 
-            <nav className="mt-5 flex flex-col gap-1.5">
-              {items.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-xl px-4 py-2.5 text-base font-medium transition",
-                      isActive
-                        ? "bg-brand-gradient text-white shadow-soft"
-                        : "text-ink hover:bg-sand/40"
-                    )
-                  }
-                >
-                  <span aria-hidden>{item.icon}</span>
-                  {item.label}
-                </NavLink>
-              ))}
+            <nav className="mt-5 flex flex-col gap-4">
+              {navGroupOrder.map((group) => {
+                const groupItems = items.filter((i) => i.group === group);
+                if (groupItems.length === 0) return null;
+                return (
+                  <div key={group} className="flex flex-col gap-1.5">
+                    <p className="px-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                      {group}
+                    </p>
+                    {groupItems.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-3 rounded-xl px-4 py-2.5 text-base font-medium transition",
+                            isActive
+                              ? "bg-brand-gradient text-white shadow-soft"
+                              : "text-ink hover:bg-sand/40"
+                          )
+                        }
+                      >
+                        <span aria-hidden>{item.icon}</span>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                );
+              })}
             </nav>
 
             {profile && (
