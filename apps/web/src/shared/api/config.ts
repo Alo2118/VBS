@@ -50,6 +50,28 @@ export const deleteOpeningRule = async (id: string): Promise<void> => {
   guard(error);
 };
 
+/** Aggiorna una regola (modifica fascia/durata/campo o attiva/sospende). */
+export const updateOpeningRule = async (
+  id: string,
+  fields: {
+    courtId?: string | null;
+    openTime?: string;
+    closeTime?: string;
+    slotDurationMinutes?: number;
+    active?: boolean;
+  }
+): Promise<void> => {
+  const patch: Record<string, unknown> = {};
+  if (fields.courtId !== undefined) patch.court_id = fields.courtId;
+  if (fields.openTime !== undefined) patch.open_time = fields.openTime;
+  if (fields.closeTime !== undefined) patch.close_time = fields.closeTime;
+  if (fields.slotDurationMinutes !== undefined)
+    patch.slot_duration_minutes = fields.slotDurationMinutes;
+  if (fields.active !== undefined) patch.active = fields.active;
+  const { error } = await supabase.from("opening_rules").update(patch).eq("id", id);
+  guard(error);
+};
+
 // --- Chiusure / eccezioni ---------------------------------------------------
 export const fetchClosures = async (): Promise<Closure[]> => {
   const { data, error } = await supabase

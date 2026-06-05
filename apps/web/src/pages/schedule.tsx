@@ -17,7 +17,8 @@ import {
   deleteClosure,
   deleteOpeningRule,
   fetchClosures,
-  fetchOpeningRules
+  fetchOpeningRules,
+  updateOpeningRule
 } from "@/shared/api/config";
 import { formatDateTime } from "@/shared/utils/date";
 
@@ -29,6 +30,11 @@ const WEEKDAY_PRESETS: { label: string; days: number[] }[] = [
   { label: "Tutti i giorni", days: [1, 2, 3, 4, 5, 6, 0] },
   { label: "Lun–Ven", days: [1, 2, 3, 4, 5] },
   { label: "Weekend", days: [6, 0] }
+];
+const DURATION_OPTIONS = [
+  { value: "60", label: "60 minuti" },
+  { value: "90", label: "90 minuti" },
+  { value: "120", label: "120 minuti" }
 ];
 const ALL_COURTS = "ALL";
 
@@ -170,16 +176,6 @@ const OpeningRulesSection = ({
     }
   };
 
-  const remove = async (id: string) => {
-    try {
-      await deleteOpeningRule(id);
-      notify("Orario rimosso.", "info");
-      await onChange();
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
-    }
-  };
-
   return (
     <Card>
       <h3 className="text-lg font-semibold">Orari di apertura</h3>
@@ -192,18 +188,14 @@ const OpeningRulesSection = ({
             </p>
             <div className="space-y-2">
               {items.map((r) => (
-                <div
+                <RuleRow
                   key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-sand/30 px-4 py-3"
-                >
-                  <span className="text-base">
-                    {r.openTime.slice(0, 5)}–{r.closeTime.slice(0, 5)} · slot {r.slotDurationMinutes}′ ·{" "}
-                    <span className="text-muted">{courtName(r.courtId)}</span>
-                  </span>
-                  <Button variant="ghost" onClick={() => remove(r.id)}>
-                    Rimuovi
-                  </Button>
-                </div>
+                  rule={r}
+                  courtOptions={courtOptions}
+                  courtName={courtName}
+                  onChange={onChange}
+                  notify={notify}
+                />
               ))}
             </div>
           </div>
@@ -261,11 +253,7 @@ const OpeningRulesSection = ({
           <Select
             label="Durata slot"
             value={duration}
-            options={[
-              { value: "60", label: "60 minuti" },
-              { value: "90", label: "90 minuti" },
-              { value: "120", label: "120 minuti" }
-            ]}
+            options={DURATION_OPTIONS}
             onChange={(e) => setDuration(e.target.value)}
           />
           <Input label="Apertura" type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required />
@@ -278,6 +266,117 @@ const OpeningRulesSection = ({
         </div>
       </form>
     </Card>
+  );
+};
+
+const RuleRow = ({
+  rule,
+  courtOptions,
+  courtName,
+  onChange,
+  notify
+}: {
+  rule: OpeningRule;
+  courtOptions: { value: string; label: string }[];
+  courtName: (id?: string) => string;
+  onChange: () => Promise<void>;
+  notify: Notify;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [court, setCourt] = useState(rule.courtId ?? ALL_COURTS);
+  const [openTime, setOpenTime] = useState(rule.openTime.slice(0, 5));
+  const [closeTime, setCloseTime] = useState(rule.closeTime.slice(0, 5));
+  const [duration, setDuration] = useState(String(rule.slotDurationMinutes));
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: () => Promise<void>, ok: string) => {
+    setBusy(true);
+    try {
+      await action();
+      notify(ok, "success");
+      await onChange();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = async () => {
+    if (closeTime <= openTime) {
+      notify("L'orario di chiusura deve essere dopo l'apertura.", "error");
+      return;
+    }
+    await run(
+      () =>
+        updateOpeningRule(rule.id, {
+          courtId: court === ALL_COURTS ? null : court,
+          openTime,
+          closeTime,
+          slotDurationMinutes: Number(duration)
+        }),
+      "Orario aggiornato."
+    );
+    setEditing(false);
+  };
+
+  const toggleActive = () =>
+    run(
+      () => updateOpeningRule(rule.id, { active: !rule.active }),
+      rule.active ? "Orario sospeso." : "Orario riattivato."
+    );
+
+  const remove = () => run(() => deleteOpeningRule(rule.id), "Orario rimosso.");
+
+  if (editing) {
+    return (
+      <div className="space-y-3 rounded-xl border border-accent bg-white px-4 py-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Select label="Campo" value={court} options={courtOptions} onChange={(e) => setCourt(e.target.value)} />
+          <Input label="Apertura" type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required />
+          <Input label="Chiusura" type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required />
+          <Select label="Durata slot" value={duration} options={DURATION_OPTIONS} onChange={(e) => setDuration(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={save} disabled={busy}>
+            {busy ? "Salvo…" : "Salva"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={busy}>
+            Annulla
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
+        rule.active ? "border-line bg-sand/30" : "border-dashed border-line opacity-60"
+      )}
+    >
+      <span className="text-base">
+        {rule.openTime.slice(0, 5)}–{rule.closeTime.slice(0, 5)} · slot {rule.slotDurationMinutes}′ ·{" "}
+        <span className="text-muted">{courtName(rule.courtId)}</span>
+        {!rule.active && (
+          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+            Sospeso
+          </span>
+        )}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" onClick={() => setEditing(true)} disabled={busy}>
+          Modifica
+        </Button>
+        <Button variant="ghost" size="sm" onClick={toggleActive} disabled={busy}>
+          {rule.active ? "Sospendi" : "Riattiva"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={remove} disabled={busy}>
+          Rimuovi
+        </Button>
+      </div>
+    </div>
   );
 };
 
