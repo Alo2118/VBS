@@ -473,4 +473,83 @@ begin
   raise notice 'TEST 20 OK: la disdetta avvisa gli altri giocatori, non chi disdice';
 end $$;
 
+-- 21) Socio approvato -> avviso al socio
+do $$
+declare v_n int;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+  perform validate_member('99999999-9999-9999-9999-999999999999', 'AICS-999',
+                          current_date, current_date + 365);
+  select count(*) into v_n from notifications
+   where type = 'MEMBER_APPROVED' and member_id = '99999999-9999-9999-9999-999999999999';
+  if v_n <> 1 then
+    raise exception 'TEST 21 FALLITO: atteso 1 avviso di approvazione, ottenuti %', v_n;
+  end if;
+  raise notice 'TEST 21 OK: approvazione tessera avvisa il socio';
+end $$;
+
+-- 22) Aggiunto alla rosa -> avviso al giocatore (non a chi lo aggiunge)
+do $$
+declare v_court uuid; v_bid uuid := gen_random_uuid(); v_n int;
+begin
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+  select id into v_court from courts order by name limit 1 offset 2;        -- 'Verde'
+  -- prenotazione inserita direttamente (evita i limiti finestra/attive del socio)
+  insert into bookings (id, court_id, member_id, start_at, end_at, price,
+                        per_head_price, free_cancellation_deadline, status)
+  values (v_bid, v_court, '22222222-2222-2222-2222-222222222222',
+          now() + interval '1 day', now() + interval '1 day' + interval '1 hour',
+          0, 0, now() + interval '1 day', 'CONFIRMED');
+  perform add_player(v_bid, '99999999-9999-9999-9999-999999999999');        -- ora VALID
+  select count(*) into v_n from notifications
+   where type = 'ADDED_TO_GAME' and member_id = '99999999-9999-9999-9999-999999999999'
+     and booking_id = v_bid;
+  if v_n <> 1 then
+    raise exception 'TEST 22 FALLITO: atteso 1 avviso al giocatore aggiunto, ottenuti %', v_n;
+  end if;
+  -- chi aggiunge (capogruppo) non riceve avviso "aggiunto"
+  select count(*) into v_n from notifications
+   where type = 'ADDED_TO_GAME' and member_id = '22222222-2222-2222-2222-222222222222'
+     and booking_id = v_bid;
+  if v_n <> 0 then
+    raise exception 'TEST 22 FALLITO: il capogruppo non deve essere avvisato (%)', v_n;
+  end if;
+
+  -- 23) Addebito/penale -> avviso al socio addebitato
+  insert into charges (booking_id, member_id, type, amount)
+  values (v_bid, '22222222-2222-2222-2222-222222222222', 'NO_SHOW', 10);
+  select count(*) into v_n from notifications
+   where type = 'CHARGE' and member_id = '22222222-2222-2222-2222-222222222222'
+     and booking_id = v_bid;
+  if v_n <> 1 then
+    raise exception 'TEST 23 FALLITO: atteso 1 avviso di addebito, ottenuti %', v_n;
+  end if;
+  raise notice 'TEST 22/23 OK: rosa e addebito avvisano il socio giusto';
+end $$;
+
+-- 24) Promemoria partita -> avviso ai giocatori degli slot imminenti (dedup)
+do $$
+declare v_court uuid; v_bid uuid := gen_random_uuid(); v_n int;
+begin
+  select id into v_court from courts order by name limit 1;                  -- 'Bianco'
+  insert into bookings (id, court_id, member_id, start_at, end_at, price,
+                        per_head_price, free_cancellation_deadline, status)
+  values (v_bid, v_court, '99999999-9999-9999-9999-999999999999',
+          now() + interval '2 hours', now() + interval '3 hours', 0, 0, now(), 'CONFIRMED');
+  insert into booking_players (booking_id, member_id) values
+    (v_bid, '99999999-9999-9999-9999-999999999999'),
+    (v_bid, '33333333-3333-3333-3333-333333333333');
+
+  select enqueue_match_reminders(3) into v_n;
+  if v_n <> 2 then
+    raise exception 'TEST 24 FALLITO: attesi 2 promemoria, ottenuti %', v_n;
+  end if;
+  -- idempotenza: una seconda esecuzione non duplica
+  select enqueue_match_reminders(3) into v_n;
+  if v_n <> 0 then
+    raise exception 'TEST 24 FALLITO: i promemoria non devono duplicarsi (%)', v_n;
+  end if;
+  raise notice 'TEST 24 OK: promemoria partita ai giocatori, senza duplicati';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;

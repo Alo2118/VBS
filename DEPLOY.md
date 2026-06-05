@@ -65,6 +65,12 @@ esegui nello SQL Editor le **migrazioni più recenti** che non hai ancora applic
   (finestra di tolleranza disdetta dalla prenotazione, configurabile)
 - [`supabase/migrations/20260604000013_cancellation_notifications.sql`](supabase/migrations/20260604000013_cancellation_notifications.sql)
   (annullamento campi in blocco per chiusura + notifiche/avvisi ai giocatori)
+- [`supabase/migrations/20260604000014_new_member_notification.sql`](supabase/migrations/20260604000014_new_member_notification.sql)
+  (avviso allo staff all'arrivo di una nuova richiesta di registrazione)
+- [`supabase/migrations/20260604000015_self_cancel_notice.sql`](supabase/migrations/20260604000015_self_cancel_notice.sql)
+  (la disdetta del socio avvisa gli altri giocatori della rosa)
+- [`supabase/migrations/20260604000016_more_notifications.sql`](supabase/migrations/20260604000016_more_notifications.sql)
+  (avvisi: socio approvato, aggiunto alla rosa, nuovo addebito + funzione promemoria)
 
 Sono sicure da rieseguire (idempotenti). In alternativa puoi reincollare tutto
 `setup_all.sql`: ricrea funzioni e policy senza perdere i dati esistenti.
@@ -99,6 +105,17 @@ il Web Push una volta sola:
      `public.notifications` che chiama la Edge Function `send-push`.
    - **Oppure pg_cron** (polling): pianifica una chiamata periodica a
      `send-push` senza body; drena tutte le notifiche con `sent_at IS NULL`.
+### Promemoria partita (pg_cron)
+Per il promemoria automatico qualche ora prima dello slot, abilita pg_cron e
+pianifica la funzione `enqueue_match_reminders` (idempotente, niente duplicati):
+```sql
+create extension if not exists pg_cron;
+select cron.schedule('vbs-match-reminders', '*/15 * * * *',
+                     'select enqueue_match_reminders(3)');  -- finestra 3 ore
+```
+Gli altri avvisi (registrazione, approvazione, rosa, addebiti, disdette) sono
+trigger/funzioni: non richiedono scheduler.
+
 5. **Sul telefono**: il socio apre l'app, tocca la 🔔 e "Attiva avvisi sul
    telefono". Su iPhone serve prima "Aggiungi a Home" (PWA installata, iOS 16.4+);
    su Android funziona anche dal browser.
