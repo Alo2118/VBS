@@ -8,16 +8,23 @@ import { cn } from "@/shared/ui/cn";
 import { formatEur } from "@/shared/utils/money";
 import { formatDateTime } from "@/shared/utils/date";
 
+/** Movimenti stornabili (non lo sono gli storni/rettifiche stessi). */
+const isReversible = (kind: LedgerEntry["kind"]): boolean =>
+  kind !== "WAIVER" && kind !== "ADJUST";
+
 /**
  * Lista dei movimenti del conto, riusata da «Il mio conto» (socio) e dalla
- * Cassa (staff). `limit` mostra solo gli ultimi N movimenti.
+ * Cassa (staff). `limit` mostra solo gli ultimi N movimenti. Se `onReverse` è
+ * passato (Cassa, gestione), ogni movimento stornabile mostra «Annulla».
  */
 export const LedgerMovements = ({
   entries,
-  limit
+  limit,
+  onReverse
 }: {
   entries: LedgerEntry[];
   limit?: number;
+  onReverse?: (entry: LedgerEntry) => void;
 }) => {
   if (entries.length === 0) {
     return <p className="text-base text-muted">Nessun movimento.</p>;
@@ -43,15 +50,26 @@ export const LedgerMovements = ({
               <p className="truncate text-base font-medium">{e.description || kindLabel}</p>
               <p className="text-sm text-muted">{meta}</p>
             </div>
-            <span
-              className={cn(
-                "shrink-0 text-base font-semibold",
-                signed < 0 ? "text-red-600" : "text-emerald-600"
+            <div className="flex shrink-0 items-center gap-3">
+              <span
+                className={cn(
+                  "text-base font-semibold",
+                  signed < 0 ? "text-red-600" : "text-emerald-600"
+                )}
+              >
+                {signed < 0 ? "−" : "+"}
+                {formatEur(Math.abs(signed))}
+              </span>
+              {onReverse && isReversible(e.kind) && (
+                <button
+                  type="button"
+                  onClick={() => onReverse(e)}
+                  className="rounded-lg px-2 py-1 text-sm font-medium text-accent hover:bg-sand/40"
+                >
+                  Annulla
+                </button>
               )}
-            >
-              {signed < 0 ? "−" : "+"}
-              {formatEur(Math.abs(signed))}
-            </span>
+            </div>
           </li>
         );
       })}

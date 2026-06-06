@@ -37,6 +37,8 @@ export type BusinessErrorCode =
   | "OUTSIDE_BOOKING_WINDOW"
   | "CANCELLATION_LATE"
   | "BOOKING_NOT_FOUND"
+  | "MEMBER_NOT_FOUND"
+  | "CANNOT_REVERSE"
   | "NOT_AUTHORIZED";
 
 export interface MemberProfile {

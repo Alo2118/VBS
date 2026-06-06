@@ -10,7 +10,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { NicknameTag } from "@/shared/ui/nickname-tag";
 import { useToast } from "@/shared/ui/toast";
-import { fetchMembers, validateMember } from "@/shared/api/staff";
+import { fetchMembers, updateMemberProfile, validateMember } from "@/shared/api/staff";
 import { toIsoDate } from "@/shared/utils/date";
 
 const statusTone = (s: MemberProfile["membershipStatus"]) =>
@@ -32,6 +32,12 @@ export const MembersPage = () => {
   const [start, setStart] = useState(toIsoDate(new Date()));
   const [end, setEnd] = useState("");
   const [busy, setBusy] = useState(false);
+  // Modifica dati anagrafici
+  const [editTarget, setEditTarget] = useState<MemberProfile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editNickname, setEditNickname] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +59,38 @@ export const MembersPage = () => {
     setAics(m.aicsNumber ?? "");
     setStart(m.membershipStartDate ?? toIsoDate(new Date()));
     setEnd(m.membershipEndDate ?? "");
+  };
+
+  const openEdit = (m: MemberProfile) => {
+    setEditTarget(m);
+    setEditName(m.fullName ?? "");
+    setEditPhone(m.phone ?? "");
+    setEditNickname(m.nickname ?? "");
+  };
+
+  const onEdit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    if (!editName.trim()) {
+      notify("Il nome non può essere vuoto.", "error");
+      return;
+    }
+    setEditBusy(true);
+    try {
+      await updateMemberProfile({
+        memberId: editTarget.id,
+        fullName: editName.trim(),
+        phone: editPhone.trim() || undefined,
+        nickname: editNickname.trim() || undefined
+      });
+      notify("Dati del socio aggiornati.", "success");
+      setEditTarget(null);
+      await load();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    } finally {
+      setEditBusy(false);
+    }
   };
 
   const onValidate = async (e: FormEvent) => {
@@ -96,6 +134,9 @@ export const MembersPage = () => {
             </div>
             <div className="flex items-center gap-3">
               <StatusPill label={statusText[m.membershipStatus]} tone={statusTone(m.membershipStatus)} />
+              <Button variant="secondary" size="lg" onClick={() => openEdit(m)}>
+                Modifica dati
+              </Button>
               {m.role === "MEMBER" && (
                 <Button size="lg" onClick={() => openValidate(m)}>
                   {m.membershipStatus === "VALID" ? "Modifica tessera" : "Conferma tessera"}
@@ -141,6 +182,43 @@ export const MembersPage = () => {
             value={end}
             onChange={(e) => setEnd(e.target.value)}
             required
+          />
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editTarget)}
+        title="Modifica dati del socio"
+        onClose={() => setEditTarget(null)}
+        footer={
+          <>
+            <Button variant="ghost" size="lg" onClick={() => setEditTarget(null)}>
+              Annulla
+            </Button>
+            <Button size="lg" form="edit-form" type="submit" disabled={editBusy}>
+              {editBusy ? "Salvo…" : "Salva"}
+            </Button>
+          </>
+        }
+      >
+        <form id="edit-form" onSubmit={onEdit} className="space-y-4">
+          <Input
+            label="Nome e cognome"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+          />
+          <Input
+            label="Telefono (facoltativo)"
+            type="tel"
+            value={editPhone}
+            onChange={(e) => setEditPhone(e.target.value)}
+          />
+          <Input
+            label="Soprannome (facoltativo)"
+            value={editNickname}
+            onChange={(e) => setEditNickname(e.target.value)}
+            placeholder="per distinguere gli omonimi"
           />
         </form>
       </Modal>

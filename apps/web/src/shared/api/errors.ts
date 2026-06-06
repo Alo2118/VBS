@@ -8,6 +8,9 @@ export const businessMessages: Record<BusinessErrorCode, string> = {
   OUTSIDE_BOOKING_WINDOW: "Non è possibile prenotare per questa data.",
   CANCELLATION_LATE: "Sei oltre il termine di disdetta gratuita: sarà dovuto il pagamento.",
   BOOKING_NOT_FOUND: "Prenotazione non trovata o non più modificabile.",
+  MEMBER_NOT_FOUND: "Socio non trovato.",
+  CANNOT_REVERSE:
+    "Questo movimento non può essere stornato (è già uno storno o è già stato annullato).",
   NOT_AUTHORIZED: "Non hai i permessi per questa operazione."
 };
 

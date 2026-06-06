@@ -18,6 +18,7 @@ import {
   postCharge,
   postPayment,
   postWaiver,
+  reverseLedgerEntry,
   type LedgerEntry,
   type MemberAccount,
   type PayMethod
@@ -146,6 +147,9 @@ const AccountModal = ({
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeKind, setChargeKind] = useState<"COURT" | "BAR">("COURT");
   const [chargeDesc, setChargeDesc] = useState("");
+  // Storno di un movimento
+  const [reverseTarget, setReverseTarget] = useState<LedgerEntry | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
 
   const reload = useCallback(async () => {
     const { balance: b, entries: e } = await fetchMemberLedger(target.memberId);
@@ -202,6 +206,26 @@ const AccountModal = ({
       await reload();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Operazione non riuscita.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doReverse = async () => {
+    if (!reverseTarget) return;
+    if (!reverseReason.trim()) {
+      notify("Indica il motivo dello storno.", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      await reverseLedgerEntry(reverseTarget.id, reverseReason.trim());
+      notify("Movimento stornato.", "success");
+      setReverseTarget(null);
+      setReverseReason("");
+      await reload();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Storno non riuscito.", "error");
     } finally {
       setBusy(false);
     }
@@ -323,10 +347,60 @@ const AccountModal = ({
         {entries.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Ultimi movimenti</p>
-            <LedgerMovements entries={entries} limit={6} />
+            <LedgerMovements
+              entries={entries}
+              limit={6}
+              onReverse={canWaive ? (e) => setReverseTarget(e) : undefined}
+            />
           </div>
         )}
       </div>
+
+      {/* Conferma storno di un movimento */}
+      {reverseTarget && (
+        <Modal
+          open
+          title="Annullare il movimento?"
+          onClose={() => {
+            setReverseTarget(null);
+            setReverseReason("");
+          }}
+          footer={
+            <>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => {
+                  setReverseTarget(null);
+                  setReverseReason("");
+                }}
+                disabled={busy}
+              >
+                Mantieni
+              </Button>
+              <Button variant="danger" size="lg" loading={busy} onClick={() => void doReverse()}>
+                Annulla movimento
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-base">
+              Verrà inserito un movimento di storno che riporta il saldo come prima.
+              Il movimento originale resta nello storico.
+            </p>
+            <p className="text-base font-medium">
+              {reverseTarget.description || reverseTarget.kind} · {formatEur(reverseTarget.amount)}
+            </p>
+            <Input
+              label="Motivo dello storno"
+              value={reverseReason}
+              onChange={(e) => setReverseReason(e.target.value)}
+              placeholder="es. importo sbagliato"
+            />
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 };

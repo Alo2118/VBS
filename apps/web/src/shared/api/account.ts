@@ -185,6 +185,19 @@ export const fetchTakingsToday = async (): Promise<Takings> => {
   return { cash: Number(row?.cash ?? 0), satispay: Number(row?.satispay ?? 0) };
 };
 
+/**
+ * Storna un movimento errato del conto: inserisce il movimento opposto
+ * collegato all'originale (solo gestione: ADMIN/MANAGER). Lo storico resta.
+ */
+export const reverseLedgerEntry = async (entryId: string, reason: string): Promise<void> => {
+  const { error } = await supabase.rpc("reverse_ledger_entry", {
+    p_entry_id: entryId,
+    p_reason: reason
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
 /** Storno/esonero di un importo dovuto (solo gestione: ADMIN/MANAGER). */
 export const postWaiver = async (
   memberId: string,

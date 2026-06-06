@@ -49,6 +49,23 @@ export const validateMember = async (params: {
   if (err) throw err;
 };
 
+/** Corregge i dati anagrafici di un socio (nome, telefono, soprannome). Staff. */
+export const updateMemberProfile = async (params: {
+  memberId: string;
+  fullName: string;
+  phone?: string;
+  nickname?: string;
+}): Promise<void> => {
+  const { error } = await supabase.rpc("update_member_profile", {
+    p_member_id: params.memberId,
+    p_full_name: params.fullName,
+    p_phone: params.phone ?? null,
+    p_nickname: params.nickname ?? null
+  });
+  const err = toBusinessError(error);
+  if (err) throw err;
+};
+
 // --- Tariffe (edizione multipla, RF-CFG-7) ----------------------------------
 export const fetchPriceRules = async (): Promise<PriceRule[]> => {
   const { data, error } = await supabase

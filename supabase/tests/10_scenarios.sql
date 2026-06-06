@@ -668,4 +668,61 @@ begin
   raise notice 'TEST 28 OK: vendita bar con righe per prodotto';
 end $$;
 
+-- 29) Storno di un movimento: il saldo torna come prima; solo gestione; no doppio
+do $$
+declare v_bal0 numeric; v_bal1 numeric; v_bal2 numeric; v_id uuid;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- ADMIN/MANAGER
+  select account_balance('33333333-3333-3333-3333-333333333333') into v_bal0;
+  select id into v_id
+    from post_account_charge('33333333-3333-3333-3333-333333333333', 'BAR', 10, 'test storno');
+  select account_balance('33333333-3333-3333-3333-333333333333') into v_bal1;
+  if v_bal1 <> v_bal0 - 10 then
+    raise exception 'TEST 29 FALLITO: addebito non applicato (% -> %)', v_bal0, v_bal1;
+  end if;
+
+  perform reverse_ledger_entry(v_id, 'errore di registrazione');
+  select account_balance('33333333-3333-3333-3333-333333333333') into v_bal2;
+  if v_bal2 <> v_bal0 then
+    raise exception 'TEST 29 FALLITO: lo storno non ripristina il saldo (% atteso %)', v_bal2, v_bal0;
+  end if;
+
+  -- doppio storno vietato
+  begin
+    perform reverse_ledger_entry(v_id, 'di nuovo');
+    raise exception 'TEST 29 FALLITO: il doppio storno non deve essere possibile';
+  exception when sqlstate 'P0001' then null;
+  end;
+
+  -- un socio non può stornare
+  begin
+    perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+    perform reverse_ledger_entry(v_id, 'x');
+    raise exception 'TEST 29 FALLITO: un socio non deve poter stornare';
+  exception when sqlstate 'P0001' then null;
+  end;
+  raise notice 'TEST 29 OK: storno ripristina il saldo, solo gestione, niente doppio';
+end $$;
+
+-- 30) Modifica dati socio: solo staff può aggiornare nome/telefono/soprannome
+do $$
+declare v_name text;
+begin
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', false); -- staff
+  perform update_member_profile('33333333-3333-3333-3333-333333333333', 'Mario Rossi', '3331234567', 'Bomber');
+  select full_name into v_name from members where id = '33333333-3333-3333-3333-333333333333';
+  if v_name <> 'Mario Rossi' then
+    raise exception 'TEST 30 FALLITO: nome non aggiornato (%)', v_name;
+  end if;
+
+  -- un socio non può modificare i dati di un altro
+  begin
+    perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+    perform update_member_profile('33333333-3333-3333-3333-333333333333', 'Hacker', null, null);
+    raise exception 'TEST 30 FALLITO: un socio non deve modificare i soci';
+  exception when sqlstate 'P0001' then null;
+  end;
+  raise notice 'TEST 30 OK: modifica dati socio, solo staff';
+end $$;
+
 select 'TUTTI I TEST SUPERATI' as risultato;
