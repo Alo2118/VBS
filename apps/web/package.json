@@ -8,9 +8,14 @@
     "build": "tsc -p tsconfig.json && vite build",
     "lint": "echo 'lint not configured'",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cap:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:apk": "npm run build && cap sync android && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.6",
+    "@capacitor/core": "^7.6.6",
     "@supabase/supabase-js": "^2.45.0",
     "@vbs/shared": "*",
     "clsx": "^2.1.0",
@@ -20,6 +25,7 @@
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.6",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",

@@ -1,0 +1,68 @@
+name: Build APK Android
+
+# Compila l'app come APK Android (PWA impacchettata con Capacitor) e la pubblica
+# come artifact scaricabile. Avvio manuale (Actions > Build APK Android > Run) o
+# creando un tag "v*". L'APK di debug è installabile direttamente sul telefono
+# (Impostazioni > consenti app da origini sconosciute).
+#
+# Richiede i secret del progetto (Settings > Secrets and variables > Actions):
+#   VITE_SUPABASE_URL          URL del progetto Supabase
+#   VITE_SUPABASE_ANON_KEY     chiave anon (pubblica) di Supabase
+# Senza questi la build web fallisce con un messaggio chiaro.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (Vite)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build --workspace apps/web
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Capacitor sync
+        working-directory: apps/web
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: apps/web/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vbs-android-debug
+          path: apps/web/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
