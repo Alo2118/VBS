@@ -23,9 +23,9 @@ export const Input = ({ label, className, id, error, ...props }: InputProps) => 
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className={cn(
-          "w-full rounded-xl border bg-white px-4 py-3 text-base text-ink",
-          "placeholder:text-muted/70 focus-visible:outline-none focus-visible:ring-2",
-          error ? "border-red-400 focus-visible:ring-red-400" : "border-line focus-visible:ring-accent",
+          "w-full rounded-xl border bg-white px-4 py-3 text-base text-ink shadow-sm transition",
+          "placeholder:text-muted/70 hover:border-sea/40 focus-visible:outline-none focus-visible:ring-2",
+          error ? "border-red-400 focus-visible:ring-red-400" : "border-line focus-visible:ring-accent focus-visible:border-sea",
           className
         )}
         {...props}

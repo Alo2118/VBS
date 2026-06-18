@@ -42,9 +42,14 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-sand-fade p-4">
-      <Card className="w-full max-w-md overflow-hidden p-0">
-        <div className="bg-brand-gradient px-6 py-7">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-sand-fade p-4">
+      {/* Aloni decorativi fluttuanti: mare e sole. */}
+      <span aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-sea/25 blur-3xl" />
+      <span aria-hidden className="pointer-events-none absolute -bottom-24 -right-20 h-80 w-80 animate-float-slow rounded-full bg-sun/25 blur-3xl" />
+
+      <Card className="relative w-full max-w-md animate-scale-in overflow-hidden p-0 shadow-lift">
+        <div className="relative overflow-hidden bg-brand-gradient-strong px-6 py-8">
+          <span aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
           <BrandMark size="lg" tone="light" />
         </div>
         <div className="p-6">

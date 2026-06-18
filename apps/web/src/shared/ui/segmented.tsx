@@ -35,11 +35,11 @@ export function Segmented<T extends string>({
               aria-checked={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 text-base font-medium transition",
+                "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 text-base font-medium transition-all duration-200",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 active
-                  ? "border-transparent bg-brand-gradient text-white"
-                  : "border-line hover:bg-sand/40"
+                  ? "border-transparent bg-brand-gradient-strong text-white shadow-hero"
+                  : "border-line bg-white/60 hover:-translate-y-px hover:border-sea/40 hover:bg-sand/40"
               )}
             >
               {o.label}

@@ -41,14 +41,16 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   const navItemClass = (isActive: boolean) =>
     cn(
-      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-xs font-medium transition",
-      isActive ? "bg-brand-gradient text-white shadow-soft" : "text-muted hover:bg-sand/40"
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-xs font-medium transition-all duration-200",
+      isActive
+        ? "bg-brand-gradient-strong text-white shadow-hero"
+        : "text-muted hover:bg-sand/50 active:scale-95"
     );
 
   return (
     <div className="min-h-screen bg-surface">
       {/* Testata (solo mobile): gradiente mare→sole, identità, stato, uscita */}
-      <header className="sticky top-0 z-20 bg-brand-gradient px-4 py-2 shadow-hero md:hidden">
+      <header className="sticky top-0 z-20 bg-brand-gradient-strong px-4 py-2 shadow-hero md:hidden">
         <div className="flex items-center justify-between gap-3">
           <BrandMark size="md" tone="light" showSubtitle={false} className="min-w-0" />
           <div className="flex shrink-0 items-center gap-2">
@@ -71,7 +73,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
         {/* Sidebar (solo desktop) */}
         <aside className="hidden shrink-0 md:block md:w-64">
-          <div className="sticky top-6 rounded-2xl border border-line bg-card p-4 shadow-soft">
+          <div className="glass sticky top-6 rounded-3xl border border-line/70 p-4 shadow-card">
             <div className="flex items-center justify-between gap-2">
               <BrandMark size="md" />
               {profile && <NotificationBell />}
@@ -92,14 +94,14 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                         to={item.path}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-3 rounded-xl px-4 py-2.5 text-base font-medium transition",
+                            "flex items-center gap-3 rounded-2xl px-4 py-2.5 text-base font-medium transition-all duration-200",
                             isActive
-                              ? "bg-brand-gradient text-white shadow-soft"
-                              : "text-ink hover:bg-sand/40"
+                              ? "bg-brand-gradient-strong text-white shadow-hero"
+                              : "text-ink hover:translate-x-0.5 hover:bg-sand/50"
                           )
                         }
                       >
-                        <span aria-hidden>{item.icon}</span>
+                        <span aria-hidden className="text-lg">{item.icon}</span>
                         {item.label}
                       </NavLink>
                     ))}
@@ -132,7 +134,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Barra di navigazione inferiore (solo mobile): voci dirette + «Altro» se troppe */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex gap-1 border-t border-line bg-card/95 px-2 py-1.5 backdrop-blur md:hidden">
+      <nav className="glass fixed inset-x-0 bottom-0 z-30 flex gap-1 border-t border-line/70 px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(21,35,63,0.18)] md:hidden">
         {primaryItems.map((item) => (
           <NavLink key={item.path} to={item.path} className={({ isActive }) => navItemClass(isActive)}>
             <span className="text-xl leading-none" aria-hidden>
