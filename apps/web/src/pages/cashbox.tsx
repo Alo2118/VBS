@@ -70,11 +70,11 @@ export const CashboxPage = () => {
       ) : (
         <>
           <Card>
-            <h3 className="text-lg font-semibold">Da incassare ({owing.length})</h3>
+            <h3 className="text-base font-semibold">Da incassare ({owing.length})</h3>
             {owing.length === 0 ? (
-              <p className="mt-3 text-base text-muted">Nessun sospeso. Tutto saldato 🎉</p>
+              <p className="mt-2 text-sm text-muted">Nessun sospeso. Tutto saldato 🎉</p>
             ) : (
-              <ul className="mt-3 divide-y divide-line">
+              <ul className="mt-2 divide-y divide-line">
                 {owing.map((a) => (
                   <AccountRow key={a.memberId} a={a} onClick={() => setTarget(a)} />
                 ))}
@@ -84,8 +84,8 @@ export const CashboxPage = () => {
 
           {others.length > 0 && (
             <Card>
-              <h3 className="text-lg font-semibold">Altri conti</h3>
-              <ul className="mt-3 divide-y divide-line">
+              <h3 className="text-base font-semibold">Altri conti</h3>
+              <ul className="mt-2 divide-y divide-line">
                 {others.map((a) => (
                   <AccountRow key={a.memberId} a={a} onClick={() => setTarget(a)} />
                 ))}
@@ -105,15 +105,15 @@ const AccountRow = ({ a, onClick }: { a: MemberAccount; onClick: () => void }) =
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-sand/40"
+      className="flex w-full items-center justify-between gap-3 px-1 py-2 text-left hover:bg-sand/40"
     >
-      <span className="min-w-0 truncate text-base font-medium">
+      <span className="min-w-0 truncate text-sm font-medium">
         {a.fullName}
         <NicknameTag nickname={a.nickname} className="ml-1" />
       </span>
       <span
         className={cn(
-          "shrink-0 text-base font-semibold",
+          "shrink-0 text-sm font-semibold tabular-nums",
           a.balance < 0 ? "text-red-600" : a.balance > 0 ? "text-emerald-600" : "text-muted"
         )}
       >

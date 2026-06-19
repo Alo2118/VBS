@@ -45,7 +45,7 @@ const Stat = ({
     <Link
       to={to}
       className={cn(
-        "group relative block overflow-hidden rounded-2.5xl border border-line/80 bg-card/95 p-5 shadow-card transition-all duration-200",
+        "group relative block overflow-hidden rounded-2.5xl border border-line/80 bg-card/95 p-4 shadow-card transition-all duration-200",
         "hover:-translate-y-0.5 hover:border-sea/40 hover:shadow-lift",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       )}
@@ -53,7 +53,7 @@ const Stat = ({
       {/* Barra accento (tono) sul bordo sinistro */}
       <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1.5", t.bar)} />
       <div className="flex items-start justify-between gap-2">
-        <p className="text-base text-muted">{label}</p>
+        <p className="text-sm text-muted">{label}</p>
         <span
           aria-hidden
           className={cn(
@@ -64,7 +64,7 @@ const Stat = ({
           {icon}
         </span>
       </div>
-      <p className="mt-1 text-4xl font-extrabold tracking-tight tabular-nums">{value}</p>
+      <p className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums">{value}</p>
       {hint && <p className="mt-1 text-sm text-muted">{hint}</p>}
     </Link>
   );
@@ -184,11 +184,11 @@ export const DashboardPage = () => {
       {!loading && (
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Prossime prenotazioni</h2>
+            <h2 className="text-base font-semibold">Prossime prenotazioni</h2>
             <span className="text-sm text-muted">Tocca per il dettaglio</span>
           </div>
           {upcoming.length === 0 ? (
-            <p className="text-base text-muted">Nessuna prenotazione in arrivo.</p>
+            <p className="text-sm text-muted">Nessuna prenotazione in arrivo.</p>
           ) : (
             <ul className="space-y-2">
               {upcoming.map((b) => (
@@ -196,7 +196,7 @@ export const DashboardPage = () => {
                   <button
                     type="button"
                     onClick={() => setDetail(b)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-white px-3 py-2 text-left transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">

@@ -49,7 +49,7 @@ export const AccountPage = () => {
           >
             {owes ? (
               <>
-                <p className="text-base text-amber-800">Da saldare</p>
+                <p className="text-sm text-amber-800">Da saldare</p>
                 <p className="mt-1 text-3xl font-bold text-amber-800">{formatEur(-balance)}</p>
                 <p className="mt-2 text-sm text-amber-800">
                   Puoi saldare alla cassa, in contanti o con Satispay.
@@ -57,7 +57,7 @@ export const AccountPage = () => {
               </>
             ) : credit ? (
               <>
-                <p className="text-base text-emerald-800">Credito disponibile</p>
+                <p className="text-sm text-emerald-800">Credito disponibile</p>
                 <p className="mt-1 text-3xl font-bold text-emerald-800">{formatEur(balance)}</p>
                 <p className="mt-2 text-sm text-emerald-800">
                   Verrà scalato dalle prossime quote campo o consumazioni.
@@ -65,14 +65,14 @@ export const AccountPage = () => {
               </>
             ) : (
               <>
-                <p className="text-base text-muted">Saldo</p>
+                <p className="text-sm text-muted">Saldo</p>
                 <p className="mt-1 text-3xl font-bold">Conto in pari</p>
               </>
             )}
           </Card>
 
           <Card>
-            <h3 className="mb-3 text-lg font-semibold">Movimenti</h3>
+            <h3 className="mb-2 text-base font-semibold">Movimenti</h3>
             <LedgerMovements entries={entries} />
           </Card>
         </>

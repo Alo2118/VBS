@@ -27,7 +27,7 @@ export const LedgerMovements = ({
   onReverse?: (entry: LedgerEntry) => void;
 }) => {
   if (entries.length === 0) {
-    return <p className="text-base text-muted">Nessun movimento.</p>;
+    return <p className="text-sm text-muted">Nessun movimento.</p>;
   }
   const rows = limit ? entries.slice(0, limit) : entries;
   return (
@@ -45,15 +45,15 @@ export const LedgerMovements = ({
           .filter(Boolean)
           .join(" · ");
         return (
-          <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
+          <li key={e.id} className="flex items-center justify-between gap-3 py-2">
             <div className="min-w-0">
-              <p className="truncate text-base font-medium">{e.description || kindLabel}</p>
-              <p className="text-sm text-muted">{meta}</p>
+              <p className="truncate text-sm font-medium">{e.description || kindLabel}</p>
+              <p className="text-xs text-muted">{meta}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               <span
                 className={cn(
-                  "text-base font-semibold",
+                  "text-sm font-semibold tabular-nums",
                   signed < 0 ? "text-red-600" : "text-emerald-600"
                 )}
               >
@@ -64,7 +64,7 @@ export const LedgerMovements = ({
                 <button
                   type="button"
                   onClick={() => onReverse(e)}
-                  className="rounded-lg px-2 py-1 text-sm font-medium text-accent hover:bg-sand/40"
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-accent hover:bg-sand/40"
                 >
                   Annulla
                 </button>

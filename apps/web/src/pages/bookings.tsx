@@ -207,7 +207,7 @@ export const BookingsPage = () => {
         <Spinner label="Carico la disponibilità…" />
       ) : byCourt.length === 0 ? (
         <Card>
-          <p className="text-center text-base text-muted">
+          <p className="text-center text-sm text-muted">
             Nessuno slot disponibile in questa giornata.
           </p>
         </Card>

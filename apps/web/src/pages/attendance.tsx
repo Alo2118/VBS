@@ -64,24 +64,24 @@ export const AttendancePage = () => {
         <Spinner />
       ) : bookings.length === 0 ? (
         <Card>
-          <p className="text-center text-base text-muted">Nessuna prenotazione in questa giornata.</p>
+          <p className="text-center text-sm text-muted">Nessuna prenotazione in questa giornata.</p>
         </Card>
       ) : (
         bookings.map((b) => (
-          <Card key={b.id} className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-semibold">
+          <Card key={b.id} className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-base font-semibold">
                 {b.memberName}
                 <NicknameTag nickname={b.memberNickname} className="ml-2" />
               </p>
-              <p className="text-base text-muted">
+              <p className="text-sm text-muted">
                 {b.courtName} · {formatTime(b.startAt)}–{formatTime(b.endAt)} ·{" "}
                 <span className={policy && b.players < policy.minPlayers ? "text-amber-300" : ""}>
                   {b.players} giocatori
                 </span>
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <StatusPill {...(DAY_BOOKING_STATUS_META[b.status] ?? { label: b.status, tone: "info" })} />
               <BookingActions booking={b} onChanged={() => load(day)} />
             </div>

@@ -135,7 +135,7 @@ export const MyBookingsPage = () => {
       <Card key={b.id} className="space-y-2.5 sm:space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="flex items-center gap-2 text-lg font-bold sm:text-xl">
+            <p className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
                 className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10"
                 style={{ background: courtColor(b.courtName) }}
@@ -143,7 +143,7 @@ export const MyBookingsPage = () => {
               />
               <span className="truncate">Campo {b.courtName}</span>
             </p>
-            <p className="mt-1 text-base">
+            <p className="mt-0.5 text-sm">
               <span className="font-semibold capitalize text-ink">{friendlyDay(b.startAt)}</span>{" "}
               <span className="text-muted">
                 · {formatTime(b.startAt)}–{formatTime(b.endAt)}
@@ -156,7 +156,7 @@ export const MyBookingsPage = () => {
 
         {/* Stato della squadra: chiaro a colpo d'occhio */}
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5 sm:pt-3">
-          <span className="text-base font-medium">
+          <span className="text-sm font-medium">
             👥 {b.players} {b.players === 1 ? "giocatore" : "giocatori"}
           </span>
           {complete ? (
@@ -168,15 +168,15 @@ export const MyBookingsPage = () => {
             />
           )}
           {share !== null && (
-            <span className="text-base text-muted">· {formatEur(share)} a testa</span>
+            <span className="text-sm text-muted">· {formatEur(share)} a testa</span>
           )}
         </div>
 
         <div className="flex flex-wrap gap-2 sm:gap-3">
-          <Button variant="secondary" size="lg" className="flex-1" onClick={() => setRoster(b)}>
+          <Button variant="secondary" size="md" className="flex-1" onClick={() => setRoster(b)}>
             Gestisci giocatori
           </Button>
-          <Button variant="danger" size="lg" className="flex-1" onClick={() => setTarget(b)}>
+          <Button variant="danger" size="md" className="flex-1" onClick={() => setTarget(b)}>
             Disdici
           </Button>
         </div>
@@ -188,7 +188,7 @@ export const MyBookingsPage = () => {
     <Card key={b.id} className="space-y-1.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-lg font-semibold">
+          <p className="flex items-center gap-2 text-base font-semibold">
             <span
               className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10"
               style={{ background: courtColor(b.courtName) }}
@@ -196,7 +196,7 @@ export const MyBookingsPage = () => {
             />
             <span className="truncate">Campo {b.courtName}</span>
           </p>
-          <p className="mt-0.5 text-base text-muted">
+          <p className="mt-0.5 text-sm text-muted">
             <span className="capitalize">{friendlyDay(b.startAt)}</span> · {formatTime(b.startAt)}–
             {formatTime(b.endAt)}
           </p>
@@ -217,7 +217,7 @@ export const MyBookingsPage = () => {
         <Spinner />
       ) : bookings.length === 0 ? (
         <Card>
-          <p className="text-center text-base text-muted">
+          <p className="text-center text-sm text-muted">
             Non hai ancora prenotazioni. Vai su «Prenota» per riservare un campo.
           </p>
         </Card>
@@ -229,7 +229,7 @@ export const MyBookingsPage = () => {
             </h3>
             {upcoming.length === 0 ? (
               <Card>
-                <p className="text-center text-base text-muted">
+                <p className="text-center text-sm text-muted">
                   Nessuna prenotazione in programma.
                 </p>
               </Card>

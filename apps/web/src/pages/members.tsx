@@ -120,25 +120,25 @@ export const MembersPage = () => {
         <Spinner />
       ) : (
         members.map((m) => (
-          <Card key={m.id} className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-semibold">
+          <Card key={m.id} className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-base font-semibold">
                 {m.fullName || m.email}
                 <NicknameTag nickname={m.nickname} className="ml-2" />
               </p>
-              <p className="text-base text-muted">
+              <p className="text-sm text-muted">
                 {m.email}
                 {m.aicsNumber ? ` · Tessera ${m.aicsNumber}` : ""}
                 {m.membershipEndDate ? ` · Scad. ${m.membershipEndDate}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <StatusPill label={statusText[m.membershipStatus]} tone={statusTone(m.membershipStatus)} />
-              <Button variant="secondary" size="lg" onClick={() => openEdit(m)}>
+              <Button variant="secondary" size="sm" onClick={() => openEdit(m)}>
                 Modifica dati
               </Button>
               {m.role === "MEMBER" && (
-                <Button size="lg" onClick={() => openValidate(m)}>
+                <Button size="sm" onClick={() => openValidate(m)}>
                   {m.membershipStatus === "VALID" ? "Modifica tessera" : "Conferma tessera"}
                 </Button>
               )}
