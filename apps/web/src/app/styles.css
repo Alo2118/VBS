@@ -6,10 +6,12 @@
   color-scheme: light;
 }
 
-/* Tema chiaro "balneare": sfondo sabbia, testo navy. */
+/* Tema chiaro "balneare": sfondo sabbia, testo navy.
+   Base compatta (15px) per un'interfaccia densa e "smart": più
+   informazioni a schermo, meno spazio sprecato. */
 html {
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -49,12 +51,12 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Accessibilità over 50 (PRD §2.3/§10): target tattili comodi,
-   focus sempre visibile. */
+/* Target tattili compatti ma ancora comodi da toccare; focus
+   sempre visibile per accessibilità da tastiera. */
 button,
 a,
 [role="button"] {
-  min-height: 44px;
+  min-height: 36px;
 }
 
 :where(a, button, input, select, textarea):focus-visible {
