@@ -1,0 +1,13 @@
+-- VBS — Sicurezza: rimuove la policy UPDATE diretta su `members`.
+--
+-- La policy `members_update_staff` (20260604000003_rls.sql) consentiva a
+-- QUALSIASI membro dello staff (incluso FRONT_DESK) di modificare QUALSIASI
+-- colonna di QUALSIASI socio via PostgREST, incluso `role`: un addetto poteva
+-- auto-promuoversi ad ADMIN (`update members set role='ADMIN' where id=<self>`).
+--
+-- Tutte le mutazioni legittime sui soci passano da funzioni SECURITY DEFINER
+-- (validate_member, expire_memberships, handle_new_user), che girano come owner
+-- e bypassano RLS: nessun flusso dell'app aggiorna `members` direttamente. La
+-- policy non serve a nulla e va rimossa (fail-closed: senza policy UPDATE, le
+-- scritture dirette sono negate; le funzioni continuano a funzionare).
+drop policy if exists members_update_staff on members;

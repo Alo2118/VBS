@@ -4,6 +4,7 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
+    "noEmit": true,
     "strict": true,
     "baseUrl": ".",
     "paths": {
@@ -12,5 +13,6 @@
     "types": ["vite/client"],
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/sw.ts"]
 }

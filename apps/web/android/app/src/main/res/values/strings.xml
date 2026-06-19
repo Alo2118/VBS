@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vicenza Beach Summer</string>
+    <string name="title_activity_main">Vicenza Beach Summer</string>
+    <string name="package_name">it.vicenzabeachsummer.app</string>
+    <string name="custom_url_scheme">it.vicenzabeachsummer.app</string>
+</resources>

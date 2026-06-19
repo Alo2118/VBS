@@ -3,5 +3,103 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+/* Tema chiaro "balneare": sfondo sabbia, testo navy.
+   Base compatta (15px) per un'interfaccia densa e "smart": più
+   informazioni a schermo, meno spazio sprecato. */
+html {
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: theme("colors.surface");
+  color: theme("colors.ink");
+  font-family: theme("fontFamily.sans");
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/* Sfondo ambientale: due aloni morbidi (mare + sole) dietro al contenuto.
+   Fisso e non interattivo: dà profondità senza disturbare la lettura. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40rem 40rem at 8% -8%, rgba(14, 165, 233, 0.16), transparent 60%),
+    radial-gradient(34rem 34rem at 108% 0%, rgba(245, 158, 11, 0.14), transparent 58%),
+    radial-gradient(46rem 46rem at 50% 116%, rgba(56, 189, 248, 0.12), transparent 60%);
+}
+
+/* Titoli un filo più serrati per un look moderno. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* Numeri tabellari per importi/contatori sempre allineati. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Target tattili compatti ma ancora comodi da toccare; focus
+   sempre visibile per accessibilità da tastiera. */
+button,
+a,
+[role="button"] {
+  min-height: 36px;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid theme("colors.accent");
+  outline-offset: 2px;
+}
+
+/* Scrollbar discreta in tono col tema (browser WebKit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme("colors.line") transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: theme("colors.line");
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Selezione testo in tono mare. */
+::selection {
+  background-color: rgba(14, 165, 233, 0.22);
+  color: theme("colors.ink");
+}
+
+/* Vetro smerigliato per barre e pannelli flottanti. */
+.glass {
+  background-color: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+}
+
+/* Rispetta chi preferisce meno animazioni. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

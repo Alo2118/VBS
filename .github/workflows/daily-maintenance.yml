@@ -1,0 +1,29 @@
+name: Manutenzione giornaliera
+
+# Ogni giorno: fa scadere le tessere oltre la data (expire_memberships) e
+# mantiene attivo il progetto Supabase free (evita la pausa per inattività).
+# Richiede il secret SUPABASE_SERVICE_ROLE_KEY (Supabase > Settings > API).
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scadenza tessere + keep-alive
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SERVICE_KEY" ]; then
+            echo "Secret mancanti: imposta VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY."
+            exit 1
+          fi
+          curl -sf -X POST "$SUPABASE_URL/rest/v1/rpc/expire_memberships" \
+            -H "apikey: $SERVICE_KEY" \
+            -H "Authorization: Bearer $SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo "Manutenzione completata."

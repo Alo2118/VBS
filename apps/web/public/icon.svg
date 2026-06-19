@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="VBS Beach Volley">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#38bdf8" stroke-width="20"/>
+  <path d="M256 106 256 406 M138 178 374 334 M374 178 138 334" stroke="#38bdf8" stroke-width="14" fill="none" stroke-linecap="round"/>
+</svg>

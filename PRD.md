@@ -1,255 +1,428 @@
-# DEV_BEST_PRACTICE.md
-Regole operative (vincolanti) per ChatGPT durante lo sviluppo dell’app Gestione Impianti Sportivi
+# PRD & Documento di Sviluppo — App Prenotazione Campi Beach Volley
 
-Versione: 1.1 (ChatGPT Dev Spec)  
-Ultimo aggiornamento: 2026-01-24  
-Scopo: questo documento guida la generazione di codice. Ogni output deve rispettarlo.
+Versione: 1.0
+Ultimo aggiornamento: 2026-06-04
+Stato: Draft per approvazione
+Riferimenti: `DEV_BEST_PRACTICE.md` (regole operative vincolanti), `README.md` (avvio locale)
 
----
-
-## 0) Regola base di esecuzione (obbligatoria)
-Quando ChatGPT scrive codice per questa app deve:
-- mantenere coerenza architetturale (niente “soluzioni una tantum”)
-- evitare duplicazioni (UI e logica)
-- centralizzare configurazioni, componenti e funzioni condivise
-- rispettare le regole di business nel backend
-- produrre codice leggibile, testabile, estendibile
-
-Se una richiesta utente confligge con queste regole, ChatGPT deve scegliere la soluzione conforme e motivare brevemente.
+> Questo documento descrive **cosa** costruire e **perché**. Le regole su **come** scrivere il codice
+> (architettura, Tailwind, centralizzazione, ledger, ecc.) restano in `DEV_BEST_PRACTICE.md` e sono vincolanti.
 
 ---
 
-## 1) Architettura: separazione chiara dei livelli
+## 1) Obiettivo e contesto
 
-### 1.1 Backend: unica fonte di verità
-Tutte le regole di business vivono nel backend:
-- tesseramento AICS (VALID/EXPIRED/SUSPENDED)
-- blocco prenotazioni per tessera scaduta
-- booking atomico (anti-overbooking)
-- wallet con ledger (movimenti immutabili)
-- vendite bar e chiusura cassa
+Realizzare un'app per la gestione delle prenotazioni di **3 campi da beach volley** di un'associazione sportiva.
 
-Il frontend può prevenire e spiegare, ma NON decidere.
+Vincoli funzionali chiave forniti dal committente:
 
-### 1.2 Frontend: UI consistente e minima logica
-Il frontend:
-- presenta dati e stati
-- gestisce navigazione e form
-- chiama API tramite un client centralizzato
-- non contiene regole di business “vere” (solo validazioni UX)
+1. **Slot configurabili dall'amministratore** (orari, durata, giorni di apertura, prezzi).
+2. Le prenotazioni possono essere effettuate **solo da soci registrati con tesseramento valido**.
+3. La prenotazione deve essere **disdetta entro il giorno prima**; in caso contrario **è dovuto il pagamento**.
+4. La **UI deve essere intuitiva anche per utenti over 50** (accessibilità e semplicità prioritarie).
 
----
+Lo scopo dell'MVP è eliminare la gestione manuale (telefono/WhatsApp/carta), prevenire le doppie
+prenotazioni e rendere automatica l'applicazione delle regole di tesseramento e di disdetta.
 
-## 2) Centralizzazione grafica con Tailwind (obbligatoria)
+### Obiettivi misurabili (success metrics)
+- 0 doppie prenotazioni (overbooking) in produzione.
+- ≥ 80% delle prenotazioni effettuate in autonomia dai soci (senza intervento staff).
+- Riduzione no-show grazie a regola di disdetta + reminder.
+- Completamento di una prenotazione in ≤ 3 tap/clic da parte di un utente over 50, senza assistenza.
 
-### 2.1 Tailwind come design system
-- Tailwind è lo standard di stile.
-- Nessun CSS “random” per pagina.
-- Evitare classi ripetute ovunque: usare componenti e utility centralizzate.
-
-### 2.2 Un solo punto di verità per tema e tokens
-Centralizzare:
-- `tailwind.config.*` (colors, spacing, breakpoints, typography)
-- eventuale file `theme.ts` o `tokens.ts` (se serve per JS)
-- definire semantic tokens (es. `bg-surface`, `text-muted`) tramite Tailwind config o classi condivise
-
-Obiettivo: cambiare look & feel senza “cercare e sostituire” 400 classi.
-
-### 2.3 Componenti UI riutilizzabili
-Creare una libreria interna (minima) di componenti:
-- Button (varianti: primary/secondary/danger/ghost, sizes)
-- Input, Select, DatePicker wrapper
-- Modal/Drawer
-- Badge/StatusPill (VALID/EXPIRED, CONFIRMED/CANCELLED…)
-- Card, Table, EmptyState
-- Toast/Notification
-
-Nessuna pagina deve “inventarsi” uno stile diverso per:
-- bottoni
-- form
-- tabella
-- alert
-
-### 2.4 Class composition standard
-Usare un helper per gestire classi Tailwind:
-- `clsx` + `tailwind-merge` (o equivalente)
-- Pattern: `cn()` in `src/shared/ui/cn.ts`
-
-Niente concatenazioni manuali infinite.
+### Fuori scope (per questo MVP)
+- Tornei, campionati, gironi.
+- Gestione bar/wallet/cassa (già previsti nel monorepo ma trattati in documenti dedicati).
+- Pagamenti online automatici con gateway (vedi §6: l'addebito disdetta è registrato, l'incasso è manuale in MVP).
 
 ---
 
-## 3) Template e stile coerenti tra le pagine (obbligatorio)
+## 2) Analisi standard e best practice
 
-### 3.1 Layout unico
-Tutte le pagine usano lo stesso layout (a seconda del ruolo):
-- `AppShell` (sidebar/header)
-- `Page` wrapper con:
-  - title
-  - breadcrumbs (opzionale)
-  - actions slot (pulsanti in alto a destra)
-  - content container coerente (max width/padding)
+Sintesi delle pratiche di settore per app di prenotazione campi sportivi e per l'accessibilità over 50,
+con le scelte adottate in questo progetto.
 
-### 3.2 Page template standard
-Ogni pagina segue questo schema:
-- Header (titolo + azioni)
-- Filtri/toolbar (se presente)
-- Contenuto principale (table/calendar/form)
-- Footer informativo (se serve)
-- Stati gestiti in modo coerente:
-  - Loading
-  - Empty
-  - Error
+### 2.1 Prenotazione campi sportivi (standard di settore)
+- **Prevenzione doppie prenotazioni**: lo slot deve essere bloccato in modo atomico al momento della
+  conferma; la disponibilità mostrata in UI non è mai la fonte di verità. → *Adottato: vincolo di unicità
+  a DB + transazione atomica (vedi §7 e DEV_BEST_PRACTICE §5).*
+- **Controllo concorrenza**: due soci che provano lo stesso slot nello stesso istante → solo uno vince,
+  l'altro riceve un errore chiaro (`SLOT_TAKEN`). → *Adottato.*
+- **Policy di cancellazione esplicite e configurabili**: finestra di disdetta gratuita definita, regole
+  più severe per fasce "prime time" possibili in futuro. → *Adottato come configurazione admin.*
+- **Gestione no-show e penali**: addebito di una quota in caso di mancata disdetta/mancata presentazione,
+  con possibilità di esonero (es. impianto chiuso per maltempo). → *Adottato.*
+- **Check-in opzionale**: rilascio dello slot se non confermato entro N minuti. → *Post-MVP.*
+- **Reminder automatici**: email/SMS prima dello slot e prima della scadenza disdetta riducono i no-show.
+  → *Adottato (canali già predisposti nel monorepo).*
 
-No layout “speciali” senza motivo.
+Fonti: SuperSaaS, Allbooked, Upperhand, Sportsman Cloud (vedi §15).
 
-### 3.3 Navigazione coerente
-- naming e routing coerenti (`/bookings`, `/members`, `/bar`, `/cash-shifts`, `/settings`)
-- guardie di accesso per ruolo
-- fallback di errore e 404 coerenti
+### 2.2 Tesseramento (vincolo non negoziabile)
+Coerente con `DEV_BEST_PRACTICE.md §6`: stato tessera `VALID/EXPIRED/SUSPENDED`, blocco prenotazioni se
+non `VALID`, job giornaliero di scadenza. Il controllo è **doppio**: UX nel frontend, verità nel backend.
 
----
+### 2.3 Accessibilità e usabilità per over 50 (WCAG 2.2, livello AA)
+Le linee guida W3C/WAI per utenti anziani e WCAG 2.2 AA sono il riferimento. Principi adottati:
 
-## 4) Centralizzazione funzioni (obbligatoria)
+- **Contrasto elevato**: rapporto testo/sfondo ≥ 4.5:1 (WCAG 1.4.3). Evitare grigio chiaro su bianco.
+- **Testo grande e ridimensionabile**: base ≥ 16px (consigliato 18px per i contenuti chiave), nessuna
+  perdita di funzionalità fino al 200% di zoom.
+- **Target tattili ampi**: pulsanti/aree cliccabili ≥ 44×44px (WCAG 2.5.5/2.5.8), con spaziatura
+  generosa per ridurre gli errori di tocco.
+- **Linguaggio semplice e concreto**: niente gergo tecnico; etichette esplicite ("Prenota", "Disdici"),
+  conferme leggibili, messaggi di errore che spiegano cosa fare.
+- **Flussi brevi e lineari**: una decisione per schermata, percorso "scegli giorno → scegli campo/orario
+  → conferma" senza passaggi nascosti.
+- **Feedback chiaro e immediato**: stato della prenotazione sempre visibile (Confermata/Disdetta), toast
+  + messaggio inline, conferme prima delle azioni irreversibili.
+- **Navigazione da tastiera completa** e compatibilità screen reader; focus visibile.
+- **Tolleranza all'errore**: conferma esplicita prima di disdire; spiegazione dell'eventuale addebito
+  PRIMA di confermare la disdetta tardiva.
+- **Coerenza**: stessi pattern, stesse posizioni dei pulsanti su tutte le pagine (cfr. AppShell/Page).
 
-### 4.1 API client unico
-Tutte le chiamate API passano da un client centralizzato:
-- gestione base URL
-- auth headers
-- refresh/retry (se previsto)
-- mapping errori standard (es. 401, 403, 422, 500)
-
-Mai fare `fetch()` direttamente nelle pagine.
-
-### 4.2 Funzioni di dominio in moduli dedicati
-Creare moduli per dominio:
-- `bookings/` (API + types + hooks + utils)
-- `members/`
-- `bar/`
-- `wallet/`
-- `auth/`
-
-Regola: logiche ripetute vanno in `utils` del dominio o in `shared/`.
-
-### 4.3 Validazioni centralizzate
-- Validazioni form: schema (es. Zod/Yup) centralizzato per feature
-- Messaggi errore coerenti
-- Data parsing e formatting centralizzati (`date.ts`, `money.ts`)
-
-### 4.4 Error handling uniforme
-- Un solo sistema per mostrare errori (toast + inline)
-- Un solo formato per errori backend (es. `code`, `message`, `details`)
-- Mappatura errori business: es. `MEMBERSHIP_EXPIRED`, `SLOT_TAKEN`
+Fonti: W3C WAI Older Users, WCAG 2.2, IBM/TPGi (vedi §15).
 
 ---
 
-## 5) Booking: affidabilità prima di tutto
+## 3) Attori e ruoli
 
-- Prenotazione = transazione atomica lato backend
-- Lock dello slot durante la creazione
-- Stati chiari: CONFIRMED/CANCELLED/NO_SHOW/COMPLETED
-- Audit log per tutte le modifiche (chi/cosa/quando/prima-dopo)
+| Ruolo        | Descrizione                                | Capacità principali |
+|--------------|--------------------------------------------|---------------------|
+| **Socio**    | Utente tesserato                           | Vede disponibilità, prenota, disdice le proprie prenotazioni, vede storico/addebiti |
+| **Front desk** | Staff di reception                       | Prenota/disdice per conto dei soci, gestisce check-in, registra incassi disdetta |
+| **Manager**  | Responsabile impianto                      | Tutto di Front desk + report, gestione soci, override addebiti |
+| **Admin**    | Amministratore                             | Configura slot/orari/prezzi/policy, gestisce ruoli e impostazioni |
 
-Mai:
-- fidarsi della UI per la disponibilità
-- fare update “alla cieca” senza re-check
-
----
-
-## 6) Tesseramento AICS: hard constraint (non negoziabile)
-
-Campi obbligatori per iscritto:
-- `aics_number`
-- `membership_start_date`
-- `membership_end_date`
-- `membership_status` (VALID/EXPIRED/SUSPENDED)
-
-Regola: `EXPIRED` => non può prenotare campi.
-- controllo frontend: UX
-- controllo backend: verità
-
-Automazione:
-- job giornaliero che scade le tessere
-- reminder scadenza (post-MVP se serve)
+Coerente con i ruoli già definiti in `packages/shared` (`ADMIN/MANAGER/FRONT_DESK/BAR_STAFF/COACH`).
 
 ---
 
-## 7) Wallet: ledger immutabile (soldi veri, niente magia)
+## 4) Requisiti funzionali
 
-- Il saldo non si salva: si calcola dalla somma movimenti
-- Movimenti immutabili: TOP_UP/PURCHASE/REFUND/ADJUSTMENT
-- Niente saldo negativo (a meno di requisito esplicito futuro)
+### 4.1 Configurazione slot (Admin) — RF-CFG
+- RF-CFG-1: L'admin definisce gli **orari di apertura** per giorno della settimana (es. Lun–Ven 9:00–23:00).
+- RF-CFG-2: L'admin definisce la **durata standard dello slot** (default 60 min, configurabile: 60/90/120).
+- RF-CFG-3: L'admin definisce **per ciascuno dei 3 campi** quali slot sono disponibili (un campo può avere
+  orari/chiusure diverse).
+- RF-CFG-4: L'admin può creare **chiusure/eccezioni** (manutenzione, festività, maltempo) che rendono
+  indisponibili slot specifici.
+- RF-CFG-5: L'admin configura le **policy di prenotazione**: anticipo massimo (default 14 giorni), finestra
+  di disdetta. **La penale di disdetta tardiva/no-show è pari al prezzo del campo prenotato** (vedi §6),
+  quindi non è un importo a sé: deriva dal prezzo dello slot.
+- RF-CFG-6: **Prezzi per fascia oraria**: l'admin definisce il prezzo del campo per fasce orarie (es.
+  mattina/pomeriggio/sera, prime-time vs non), eventualmente diverso per giorno/campo. Il prezzo dello slot
+  determina sia l'eventuale costo della prenotazione sia l'importo della penale.
+- RF-CFG-7: **Edizione multipla degli slot**: l'admin può modificare **più slot in blocco** (selezione
+  multipla / per intervallo / per fascia) — es. impostare prezzo, durata, apertura o chiusura su molti slot
+  in un'unica operazione, senza editarli uno per uno.
+- RF-CFG-8: Le configurazioni sono versionate/audit: ogni modifica registra chi/quando/prima-dopo (anche le
+  edizioni multiple, come singola operazione tracciata).
 
-Ogni movimento deve avere:
-- riferimento (sale/booking/manual)
-- operatore
-- timestamp
-- motivo per adjustment/refund
+### 4.2 Disponibilità e prenotazione (Socio/Staff) — RF-BOOK
+- RF-BOOK-1: Il socio vede una **griglia di disponibilità** (giorno × campo × orario) con stato chiaro:
+  Libero / Occupato / Non disponibile.
+- RF-BOOK-2: Il socio seleziona uno slot libero e conferma la prenotazione in un flusso a pochi passi.
+- RF-BOOK-3: **Solo i soci con tessera `VALID`** possono confermare. Stato `PENDING` (non ancora validato
+  dallo staff), `EXPIRED` o `SUSPENDED` → prenotazione bloccata con messaggio chiaro e indicazione su come
+  procedere (attendere validazione / rinnovare la tessera).
+- RF-BOOK-4: La creazione è **atomica**: nessun overbooking anche con richieste concorrenti.
+- RF-BOOK-5: Limiti anti-abuso configurabili (es. max N prenotazioni attive per socio) — *configurabile,
+  default generoso in MVP.*
+- RF-BOOK-6: Conferma con riepilogo: campo, data, ora, prezzo, **scadenza disdetta gratuita** ben evidenziata.
+- RF-BOOK-7: Notifica di conferma (email/SMS secondo configurazione).
 
----
+### 4.3 Disdetta e penali — RF-CANCEL
+- RF-CANCEL-1: Il socio può disdire dalle proprie prenotazioni attive.
+- RF-CANCEL-2: **Regola di disdetta** (requisito committente): la disdetta è gratuita se effettuata
+  **entro il giorno prima** della prenotazione. Default operativo: **entro le 23:59 del giorno precedente**
+  alla data dello slot. La soglia esatta è **configurabile** dall'admin (vedi §6 per il modello preciso).
+- RF-CANCEL-3: Disdetta **tardiva** (oltre la soglia) o **no-show** → **è dovuto il pagamento**: si genera
+  un **addebito (charge)** a carico del socio **pari al prezzo del campo prenotato** (lo stesso prezzo di
+  quello slot/fascia).
+- RF-CANCEL-4: Prima di confermare una disdetta tardiva, la UI **mostra esplicitamente l'importo dovuto**
+  e chiede conferma (tolleranza all'errore per over 50).
+- RF-CANCEL-5: Lo staff (Manager) può **esonerare** un addebito con motivazione obbligatoria (audit log).
+- RF-CANCEL-6: Notifica di disdetta e, se applicabile, dell'addebito generato.
 
-## 8) Pagamenti: contante, Satispay, wallet
+### 4.4 Storico e addebiti (Socio) — RF-HIST
+- RF-HIST-1: Il socio vede lo storico prenotazioni con stato (Confermata/Disdetta/No-show/Completata).
+- RF-HIST-2: Il socio vede gli **addebiti** dovuti e il loro stato (Dovuto/Pagato/Esonerato).
 
-MVP:
-- Contante: registrazione manuale
-- Satispay: registrazione manuale (no API iniziale)
-- Wallet: decremento via ledger
-
-Regola:
-- ogni `Sale` ha almeno un `Payment` tracciato
-- storni con motivazione obbligatoria
-- audit log su operazioni critiche
-
----
-
-## 9) Cassa bar: turni e riconciliazione
-
-- Apertura turno: fondo iniziale + operatore
-- Chiusura turno: conteggio + differenze
-- Report turni (CSV/PDF post-MVP)
-
-Mai:
-- cancellare vendite senza trace
-- modificare importi storici
-
----
-
-## 10) Convenzioni di codice (per ChatGPT)
-
-### 10.1 Stile
-- Nomi espliciti, niente abbreviazioni ambigue
-- Funzioni piccole, testabili
-- Nessuna duplicazione: DRY “con giudizio”
-- Commenti solo dove serve spiegare il “perché”, non il “cosa”
-
-### 10.2 Tipi e contratti
-- Types/DTO condivisi e versionati per API
-- Non “any”
-- Date e money sempre gestiti con utility centralizzate
-
-### 10.3 Test minimi raccomandati
-- Backend: unit test su regole tesseramento + booking anti-overlap + wallet ledger
-- Frontend: test componenti chiave e flussi critici (almeno smoke)
-
----
-
-## 11) Output standard quando ChatGPT genera codice
-Ogni risposta di ChatGPT che contiene implementazione deve includere:
-- dove mettere i file (path)
-- cosa aggiungere/modificare (lista)
-- eventuali migrazioni DB (se backend)
-- note su edge cases coperti
-- nessun codice duplicato tra pagine
+### 4.5 Gestione soci e registrazione (Staff/Admin) — RF-MEMBER
+- RF-MEMBER-1: **Registrazione con validazione dello staff (deciso)**: il socio si **auto-registra**
+  (dati anagrafici + credenziali) ma l'account nasce in stato **`PENDING`** e **non può prenotare** finché
+  lo staff non lo **valida** inserendo/confermando i dati tessera (`aics_number`, date) e portandolo a
+  `VALID`. Lo staff può anche rifiutare/sospendere.
+- RF-MEMBER-2: Anagrafica socio con campi tessera obbligatori (`aics_number`, `membershipStartDate`,
+  `membershipEndDate`, `membershipStatus`) — cfr. shared types.
+- RF-MEMBER-3: **Tessera scaduta = stop prenotazioni (deciso)**: con `membershipStatus` diverso da `VALID`
+  (`EXPIRED`/`SUSPENDED`/`PENDING`) il socio **non può prenotare**; le prenotazioni future restano valide ma
+  non se ne possono creare di nuove finché la tessera non torna `VALID`. Controllo imposto dal DB (RLS), non
+  dal solo frontend.
+- RF-MEMBER-4: Job giornaliero che porta a `EXPIRED` le tessere con `membershipEndDate` superata.
+- RF-MEMBER-5: Reminder scadenza tessera (post-MVP se necessario).
 
 ---
 
-## 12) Regola finale anti-disastro
-Se una soluzione sembra “più veloce” ma introduce:
-- duplicazione
-- stile incoerente
-- regole business nel frontend
-- soldi non tracciabili
+## 5) Requisiti non funzionali
 
-Allora è scartata. Anche se “funziona”.
+- **Affidabilità**: nessun overbooking; operazioni critiche transazionali e con audit log.
+- **Accessibilità**: conformità **WCAG 2.2 livello AA** (vedi §2.3) verificata su flussi critici.
+- **Sicurezza/Privacy**: dati personali e tessera trattati secondo **GDPR** (minimizzazione, base giuridica,
+  diritto di cancellazione, retention definita). Password con hashing robusto, sessioni sicure, controllo
+  ruoli (RBAC) su tutte le rotte. Audit log su azioni sensibili.
+- **Performance**: griglia disponibilità < 1s su rete media; UI utilizzabile su smartphone datati.
+- **Compatibilità**: responsive mobile-first; browser recenti (ultimi 2 anni) + fallback graceful.
+- **Localizzazione**: italiano come lingua primaria; formati data/ora/€ centralizzati (`date.ts`, `money.ts`).
+- **Osservabilità**: logging strutturato (già presente `logger.ts`), health check (`/health`).
+
+---
+
+## 6) Modello della regola di disdetta (dettaglio)
+
+La frase "disdetta entro il giorno prima" è ambigua e va resa **deterministica**. Si definisce così:
+
+- Ogni prenotazione ha una data/ora di inizio `start` e una **`free_cancellation_deadline`** calcolata
+  alla creazione in base alla policy attiva.
+- **Modello di default (consigliato, "giorno solare prima")**:
+  `free_cancellation_deadline = 23:59:59 del giorno precedente a start` (fuso orario impianto, `Europe/Rome`).
+  Esempio: slot di sabato alle 18:00 → disdetta gratuita fino a venerdì 23:59.
+- **Modello alternativo (configurabile, "ore di anticipo")**:
+  `free_cancellation_deadline = start − cancellationHours` (es. 24h). Già presente come
+  `BOOKING_CANCELLATION_HOURS` nel monorepo.
+- L'admin sceglie quale modello applicare (`CALENDAR_DAY_BEFORE` | `ROLLING_HOURS`).
+
+**Importo della penale (deciso):** la penale è **uguale al prezzo del campo** per quello slot/fascia oraria.
+Non esiste un importo penale separato: si usa il `price` della prenotazione (determinato dalla fascia oraria,
+vedi RF-CFG-6). Lo `price` viene "congelato" sulla prenotazione al momento della creazione, così la penale
+resta corretta anche se l'admin cambia i listini in seguito.
+
+Logica di disdetta:
+1. `now <= free_cancellation_deadline` → disdetta **gratuita**, slot liberato, stato `CANCELLED`.
+2. `now > free_cancellation_deadline` → disdetta **tardiva**: slot liberato, stato `CANCELLED`, viene
+   generato un **charge** di importo = `booking.price` (prezzo del campo per quella fascia).
+3. Mancata presentazione senza disdetta → lo staff segna `NO_SHOW` → charge di importo = `booking.price`.
+4. Eccezioni d'impianto (es. maltempo, chiusura) → nessun addebito; eventuale rimborso automatico/esonero.
+
+**Pagamento dell'addebito (MVP)**: l'addebito è registrato e tracciato (stato `DUE`). L'incasso avviene
+allo sportello (contante/Satispay) o tramite wallet, con registrazione manuale dello staff. L'integrazione
+con gateway di pagamento online è **post-MVP**. Coerente con DEV_BEST_PRACTICE §7–8 (ledger immutabile,
+ogni movimento tracciato, storni con motivazione).
+
+---
+
+## 7) Modello dati (concettuale)
+
+> Schema logico; l'implementazione DB seguirà le convenzioni del backend (migrazioni versionate).
+
+- **Member** — `id, fullName, email?, phone?, role, aicsNumber?, membershipStartDate?, membershipEndDate?,
+  membershipStatus (PENDING/VALID/EXPIRED/SUSPENDED), validatedBy?, validatedAt?`
+  - Auto-registrazione → nasce `PENDING`; lo staff valida → `VALID` (vedi RF-MEMBER-1).
+- **Court** — `id, name (Campo Beach 1..3), active`
+- **OpeningRule** — `id, courtId?, weekday, openTime, closeTime, slotDurationMinutes, active`
+  (definisce gli slot generabili; `courtId` null = vale per tutti i campi)
+- **PriceRule** (prezzo per fascia oraria) — `id, courtId?, weekday?, startTime, endTime, price`
+  (tariffa applicata agli slot che ricadono nella fascia; `courtId`/`weekday` null = vale per tutti).
+  Il prezzo dello slot deriva da qui ed è sia costo prenotazione sia importo penale (vedi §6, RF-CFG-6).
+- **Closure** — `id, courtId?, startAt, endAt, reason` (eccezioni/manutenzione/maltempo)
+- **Booking** — `id, courtId, memberId, startAt, endAt, status (CONFIRMED/CANCELLED/NO_SHOW/COMPLETED),
+  price (congelato alla creazione dalla PriceRule), freeCancellationDeadline, createdBy, createdAt,
+  cancelledAt?, cancelledBy?`
+  - **Vincolo di unicità**: `(courtId, startAt)` univoco tra prenotazioni attive → anti-overbooking a DB.
+- **Charge** — `id, bookingId, memberId, type (LATE_CANCELLATION/NO_SHOW), amount (= booking.price),
+  status (DUE/PAID/WAIVED), reason?, createdAt, settledAt?, settledBy?`
+- **BookingPolicy** (config) — `cancellationModel, cancellationHours, maxAdvanceDays, slotDurationMinutes,
+  maxActiveBookingsPerMember` (la penale non è un importo a sé: è il `price` dello slot).
+- **AuditLog** — `id, actorId, action, entity, entityId, before, after, createdAt`
+
+Note edge case da coprire:
+- Slot a cavallo di mezzanotte / cambio ora legale (gestire con timezone, non con orari "naïve").
+- Disdetta di slot già iniziato/passato → non consentita.
+- Sovrapposizione/lacune tra fasce prezzo: validare le `PriceRule` (no buchi non coperti, no sovrapposizioni
+  ambigue); definire una tariffa di default per slot non coperti.
+- Tessera che scade **tra** la prenotazione e lo slot: la prenotazione già confermata resta valida; non se
+  ne creano di nuove con tessera non `VALID` (vedi RF-MEMBER-3).
+
+---
+
+## 8) API (bozza, REST)
+
+Tutte le rotte passano dal client API centralizzato lato web; RBAC e validazione (schema) lato server.
+Formato errori uniforme `{ code, message, details? }` con codici business: `MEMBERSHIP_NOT_VALID`
+(copre `PENDING`/`EXPIRED`/`SUSPENDED`), `SLOT_TAKEN`, `OUTSIDE_BOOKING_WINDOW`, `CANCELLATION_LATE`,
+`BOOKING_NOT_FOUND`.
+
+| Metodo | Endpoint                         | Ruolo            | Descrizione |
+|--------|----------------------------------|------------------|-------------|
+| GET    | `/bookings/policy`               | tutti            | Policy attiva (già presente) |
+| GET    | `/availability?date=&courtId=`   | Socio+           | Griglia disponibilità calcolata da OpeningRule/Closure/Booking |
+| POST   | `/bookings`                      | Socio+           | Crea prenotazione (atomica; valida tessera, finestra, conflitti) |
+| GET    | `/bookings/me`                   | Socio            | Prenotazioni del socio loggato |
+| POST   | `/bookings/:id/cancel`           | Socio (propria)+ | Disdice; calcola gratuità o genera charge |
+| POST   | `/bookings/:id/no-show`          | Front desk+      | Segna no-show e genera charge |
+| GET    | `/charges/me`                    | Socio            | Addebiti del socio |
+| POST   | `/charges/:id/settle`            | Front desk+      | Registra pagamento addebito |
+| POST   | `/charges/:id/waive`             | Manager+         | Esonera con motivazione |
+| CRUD   | `/admin/opening-rules`           | Admin            | Configura slot |
+| CRUD   | `/admin/price-rules`             | Admin            | Prezzi per fascia oraria |
+| POST   | `/admin/slots/bulk-edit`         | Admin            | Edizione multipla slot (prezzo/durata/apertura su selezione) |
+| CRUD   | `/admin/closures`                | Admin/Manager    | Chiusure/eccezioni |
+| PUT    | `/admin/booking-policy`          | Admin            | Aggiorna policy |
+| POST   | `/auth/register`                 | pubblico         | Auto-registrazione socio (nasce `PENDING`) |
+| POST   | `/members/:id/validate`          | Front desk+      | Valida socio: dati tessera → `VALID` (o rifiuta/sospende) |
+| CRUD   | `/members`                       | Front desk+      | Gestione soci/tessere |
+
+Con l'architettura scelta (§9) queste rotte **non sono un server Node separato**: si realizzano come
+**tabelle + RLS + Postgres/Edge Functions su Supabase**, invocate dal client Supabase nel frontend. La
+tabella resta un contratto logico delle operazioni e dei permessi (chi può fare cosa).
+
+---
+
+## 9) Architettura e stack (deciso: PWA + Supabase, costo 0)
+
+Vincolo committente: **nessun budget**, **nessun server da gestire**, dati **condivisi** tra i soci,
+UI fruibile come app dagli over 50. Decisione presa: **PWA servita da hosting statico gratuito** +
+**Supabase (PostgreSQL gestito)** come backend/dati. Niente SQLite (database locale escluso: i dati
+devono essere condivisi e centralizzati). Il backend Fastify dello skeleton **viene dismesso**: le regole
+di business risiedono nel database (vincoli + funzioni) e nelle Edge Functions, non in un server Node da
+ospitare (che su free tier "si addormenta", penalizzando proprio gli over 50).
+
+- **Frontend (PWA)**: React + Vite + Tailwind (skeleton esistente) configurato come **Progressive Web App**
+  (manifest + service worker): un unico prodotto che è sia **webapp con link di accesso** sia **app
+  installabile** con icona in home e apertura a schermo intero. Componenti UI centralizzati (`shared/ui`),
+  layout unico (`AppShell`/`Page`), client dati unico (vedi sotto), niente regole business nel FE.
+- **Backend/Dati = Supabase** (unica fonte di verità):
+  - **PostgreSQL**: anti-overbooking garantito da **vincolo di unicità** su `(courtId, startAt)` per le
+    prenotazioni attive (esclusione totale dei doppioni a livello DB).
+  - **Auth**: login soci gestito da Supabase Auth.
+  - **Row Level Security (RLS)**: la regola "solo soci con tessera `VALID` possono prenotare" e l'accesso
+    per ruolo (RBAC) sono imposti dal database, non dal frontend.
+  - **Postgres functions / Edge Functions**: operazioni atomiche e logica sensibile (creazione
+    prenotazione, disdetta con calcolo penale, no-show, esonero) eseguite lato server-DB in transazione.
+  - **Migrazioni** versionate (cartella `supabase/migrations`).
+- **Shared**: tipi/DTO condivisi in `packages/shared` (estendere con `Court`, `Booking`, `Charge`, ecc.),
+  allineati allo schema Postgres.
+- **Hosting**: **Cloudflare Pages** collegato al repository Git (deploy automatico a ogni push, banda
+  illimitata, uso commerciale consentito, gratis) → fornisce il "link di accesso". Alternative free
+  equivalenti: Netlify.
+- **Costi**: **0 €**. Supabase free (500 MB DB, 50.000 utenti/mese, API illimitate) e Cloudflare Pages free
+  sono ampiamente sufficienti per un club con 3 campi.
+- **Asterisco operativo**: Supabase free mette in pausa il progetto dopo **7 giorni di inattività del
+  database**; si previene con un **ping giornaliero gratuito** (es. GitHub Action schedulata). I dati non
+  si perdono.
+
+> Nota migrazione: lo skeleton in `apps/api` (Fastify) e i relativi `.env` restano nel repo come storia ma
+> non sono il target dell'MVP; le rotte descritte in §8 si traducono in tabelle/RLS/funzioni Supabase e
+> chiamate del client Supabase dal frontend.
+
+---
+
+## 10) UX over 50 — linee guida concrete di implementazione
+
+Traduzione operativa della §2.3 in scelte di design system (Tailwind tokens + componenti `shared/ui`):
+
+- **Tipografia**: base 18px sui contenuti, titoli ben distinti; line-height ≥ 1.5.
+- **Colori/contrasto**: palette con contrasto AA garantito; stati colore **sempre accompagnati da testo/icona**
+  (non solo colore) — es. badge "Libero/Occupato" con etichetta, non solo verde/rosso.
+- **Pulsanti**: alti (≥ 48px), etichette verbali ("Prenota", "Disdici la prenotazione"), azione primaria
+  evidente; pulsanti distanziati.
+- **Form**: un campo per riga, label sempre visibile (no solo placeholder), messaggi di errore inline e gentili.
+- **Calendario/griglia**: vista giornaliera semplice di default; navigazione "Oggi / ‹ giorno › / giorno ›";
+  slot grandi e toccabili.
+- **Conferme**: dialog di conferma per disdetta con riepilogo e **importo eventuale in grande**.
+- **Aiuto**: testo guida breve in pagina, FAQ accessibile, contatto staff visibile.
+- **Errori di rete**: stati Loading/Empty/Error coerenti e comprensibili (cfr. Page template).
+
+Definire i token in `tailwind.config.js` (font-size, spacing, target size) così da applicare lo standard
+una sola volta a tutta l'app.
+
+---
+
+## 11) Roadmap a fasi
+
+**Fase 0 — Fondamenta**
+- Frontend PWA (manifest + service worker) dallo skeleton React/Vite/Tailwind; AppShell/Page e design
+  system base. ✅ skeleton UI esistente.
+- Progetto **Supabase**: schema + migrazioni, vincolo anti-overbooking `(courtId, startAt)`, Auth, RLS,
+  tipi shared estesi allineati allo schema. Deploy su Cloudflare Pages da Git + ping keep-alive.
+
+**Fase 1 — MVP prenotazioni**
+- Configurazione slot/orari (Admin), **prezzi per fascia oraria** ed **edizione multipla degli slot**.
+- **Auto-registrazione socio con validazione staff** (stato `PENDING` → `VALID`).
+- Griglia disponibilità + creazione prenotazione atomica con check tessera `VALID` (blocco se scaduta).
+- Disdetta con regola "giorno prima" + generazione charge (= prezzo del campo) per tardiva/no-show.
+- Storico prenotazioni e addebiti lato socio.
+- Notifiche conferma/disdetta (email/SMS già predisposti).
+- UI conforme WCAG 2.2 AA sui flussi critici.
+
+**Fase 2 — Operatività staff**
+- Registrazione incassi addebiti (contante/Satispay/wallet), esoneri con motivazione, audit.
+- Reminder automatici (pre-slot e pre-scadenza disdetta).
+- Report base (occupazione campi, no-show, incassi).
+
+**Fase 3 — Estensioni (post-MVP)**
+- Pagamento online disdetta (gateway), check-in, liste d'attesa, prenotazioni ricorrenti.
+
+---
+
+## 12) Criteri di accettazione e test
+
+Coerente con DEV_BEST_PRACTICE §10.3 (unit test su regole critiche).
+
+- **Anti-overbooking**: due POST concorrenti sullo stesso slot → 1 successo, 1 `SLOT_TAKEN`. *(unit/integration)*
+- **Tessera**: socio `PENDING`/`EXPIRED`/`SUSPENDED` non può prenotare → `MEMBERSHIP_NOT_VALID`. *(unit)*
+- **Registrazione**: auto-registrazione crea socio `PENDING`; validazione staff → `VALID` abilita la
+  prenotazione. *(integration)*
+- **Prezzo per fascia**: lo slot assume il `price` della `PriceRule` corretta; prenotazione congela il
+  prezzo. *(unit)*
+- **Edizione multipla**: bulk-edit aggiorna N slot in un'unica operazione tracciata in audit. *(integration)*
+- **Finestra**: prenotazione oltre `maxAdvanceDays` → `OUTSIDE_BOOKING_WINDOW`. *(unit)*
+- **Disdetta gratuita**: `now <= deadline` → nessun charge, stato `CANCELLED`. *(unit, casi limite mezzanotte/DST)*
+- **Disdetta tardiva**: `now > deadline` → charge `LATE_CANCELLATION` di importo = `booking.price`. *(unit)*
+- **No-show**: segnalazione genera charge `NO_SHOW` di importo = `booking.price`. *(unit)*
+- **Esonero**: richiede motivazione, scrive audit log. *(unit)*
+- **Accessibilità**: flussi "prenota" e "disdici" superano audit WCAG 2.2 AA (contrasto, target, tastiera,
+  screen reader), verificati con utente reale over 50. *(test manuale + automatizzato es. axe)*
+
+---
+
+## 13) Domande aperte (da confermare col committente)
+
+1. **Soglia disdetta**: confermare modello di default "entro le 23:59 del giorno prima" vs "X ore prima"?
+2. ~~**Importo penale**~~ — **RISOLTO**: la penale è **pari al prezzo del campo** per quello slot/fascia (§6).
+3. ~~**Prezzo slot**~~ — **RISOLTO**: prezzi **per fascia oraria** configurabili dall'admin, con **edizione
+   multipla degli slot** (§4.1 RF-CFG-6/7).
+4. **Pagamento penale**: solo manuale allo sportello (MVP) o serve pagamento online da subito?
+   *(Default assunto: manuale in MVP, online in Fase 3.)*
+5. ~~**Registrazione soci**~~ — **RISOLTO**: **auto-registrazione del socio con validazione dello staff**
+   (stato `PENDING` → `VALID`) (§4.5 RF-MEMBER-1).
+6. ~~**Tessera che scade tra prenotazione e gioco**~~ — **RISOLTO**: la prenotazione confermata resta valida;
+   con tessera non `VALID` non si creano nuove prenotazioni (§4.5 RF-MEMBER-3).
+7. **Limiti**: numero massimo di prenotazioni attive per socio? Prenotazioni ricorrenti necessarie in MVP?
+   *(Default assunto: limite generoso/assente in MVP, ricorrenti in Fase 3.)*
+8. ~~**Database/hosting**~~ — **RISOLTO**: PWA su Cloudflare Pages + Supabase (PostgreSQL), costo 0,
+   niente SQLite/server da gestire (vedi §9).
+
+---
+
+## 14) Coerenza con i documenti esistenti
+- Le **regole di codifica** (architettura a livelli, Tailwind design system, centralizzazione API/funzioni,
+  ledger immutabile, audit) sono in `DEV_BEST_PRACTICE.md` e restano vincolanti.
+- Questo PRD definisce ambito, requisiti, regole di business e roadmap del **dominio prenotazioni**.
+- Lo skeleton attuale (`apps/api`, `apps/web`, `packages/shared`) è il punto di partenza implementativo.
+
+---
+
+## 15) Fonti (best practice e accessibilità)
+- W3C WAI — *Older Users and Web Accessibility*: https://www.w3.org/WAI/older-users/
+- W3C WAI — *Developing Websites for Older People (WCAG)*: https://www.w3.org/WAI/older-users/developing/
+- WCAG 2.2 (arc42 Quality Model overview): https://quality.arc42.org/standards/wcag-2-2
+- IBM — *Accessible Design for an Aging Population*: https://www.ibm.com/think/insights/accessible-design-aging-population
+- TPGi — *Preventing Ageism in Design*: https://www.tpgi.com/preventing-ageism-in-design-digital-accessibility-for-older-adults/
+- SuperSaaS — *Sports Courts Booking System*: https://www.supersaas.com/info/sports-courts-booking-system
+- Allbooked — *Sports field booking application guide*: https://www.allbooked.com/insights/sports-field-booking-application
+- Upperhand — *Sports Court Booking App*: https://upperhand.com/court-booking-app/
+- Sportsman Cloud — *Court Booking Software*: https://sportsmancloud.com/court-booking
 
 Fine documento.
